@@ -459,6 +459,7 @@ function init() {
         photo: null,
         remarks: ''
     }));
+    initTheme();
     renderGroups();
     updateStats();
     setupEventListeners();
@@ -508,6 +509,15 @@ function getFilteredGroups() {
 }
 
 // ─── RENDER GROUPS ───
+function escapeHtml(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function renderGroups() {
     const container = document.getElementById('groupList');
     const groups = getFilteredGroups();
@@ -538,12 +548,24 @@ function renderGroups() {
 
         const itemsHtml = group.items.map(item => {
             const isFail = item.status === 'FAIL';
+            const showEvidence = isFail || item.photo || item.remarks;
             return `
                 <div class="item-row">
                     <div class="item-info">
-                        <div class="item-id">${item.pdc}</div>
-                        <div class="item-title">${item.picp}</div>
-                        <div class="item-spec">${item.spec}</div>
+                        <div class="item-id">${escapeHtml(item.pdc)}</div>
+                        <div class="item-title">${escapeHtml(item.picp)}</div>
+                        <div class="item-spec">${escapeHtml(item.spec)}</div>
+                        <div class="item-evidence ${showEvidence ? 'visible' : ''}">
+                            <div class="photo-fail-area ${showEvidence ? 'visible' : ''}" id="photoArea-${item.id}">
+                                <label for="photo-${item.id}" title="Upload evidence photo">
+                                    <i class="fas fa-camera"></i>
+                                    <span>Photo</span>
+                                </label>
+                                <input type="file" id="photo-${item.id}" accept="image/*" capture="environment" onchange="handlePhoto(${item.id}, this)" />
+                                <img class="photo-preview-fail ${item.photo ? 'visible' : ''}" id="preview-${item.id}" src="${item.photo || ''}" alt="evidence" />
+                            </div>
+                            <textarea class="evidence-remarks" placeholder="Add remarks, defect details, or test notes..." oninput="updateRemarks(${item.id}, this.value)">${escapeHtml(item.remarks || '')}</textarea>
+                        </div>
                     </div>
                     <div class="item-actions">
                         <button class="status-btn btn-pass ${item.status === 'PASS' ? 'active' : ''}" onclick="setStatus(${item.id}, 'PASS')">
@@ -552,13 +574,6 @@ function renderGroups() {
                         <button class="status-btn btn-fail ${isFail ? 'active' : ''}" onclick="setStatus(${item.id}, 'FAIL')">
                             <i class="fas fa-times"></i>
                         </button>
-                        <div class="photo-fail-area ${isFail ? 'visible' : ''}" id="photoArea-${item.id}">
-                            <label for="photo-${item.id}" title="Upload evidence photo">
-                                <i class="fas fa-camera"></i>
-                            </label>
-                            <input type="file" id="photo-${item.id}" accept="image/*" capture="environment" onchange="handlePhoto(${item.id}, this)" />
-                            <img class="photo-preview-fail ${item.photo ? 'visible' : ''}" id="preview-${item.id}" src="${item.photo || ''}" alt="evidence" />
-                        </div>
                     </div>
                 </div>
             `;
@@ -639,7 +654,7 @@ function applyStatus(item, status) {
     }
 }
 
-// ─── PHOTO ───
+// ─── PHOTO / EVIDENCE ───
 function handlePhoto(id, input) {
     const file = input.files[0];
     if (!file) return;
@@ -652,6 +667,12 @@ function handlePhoto(id, input) {
         showToast('📸 Evidence photo captured', 'success');
     };
     reader.readAsDataURL(file);
+}
+
+function updateRemarks(id, value) {
+    const item = inspectionItems.find(i => i.id === id);
+    if (!item) return;
+    item.remarks = value;
 }
 
 // ─── STATS ───
@@ -781,40 +802,30 @@ function scanQR() {
     showToast('📷 QR scanner placeholder (html5-qrcode integration ready)', 'info');
 }
 
-let darkMode = false;
-function toggleDarkMode() {
-    darkMode = !darkMode;
-    const root = document.documentElement;
-    if (darkMode) {
-        root.style.setProperty('--gray-50', '#0f172a');
-        root.style.setProperty('--gray-100', '#1e293b');
-        root.style.setProperty('--gray-200', '#334155');
-        root.style.setProperty('--gray-300', '#475569');
-        root.style.setProperty('--gray-400', '#94a3b8');
-        root.style.setProperty('--gray-500', '#cbd5e1');
-        root.style.setProperty('--gray-600', '#e2e8f0');
-        root.style.setProperty('--gray-700', '#f1f5f9');
-        root.style.setProperty('--gray-800', '#f8fafc');
-        root.style.setProperty('--gray-900', '#ffffff');
-        document.querySelector('.app-header .header-actions button i').className = 'fas fa-sun';
-        document.body.style.background = '#0f172a';
-        showToast('🌙 Dark mode', 'info');
-    } else {
-        root.style.setProperty('--gray-50', '#f8fafc');
-        root.style.setProperty('--gray-100', '#f1f5f9');
-        root.style.setProperty('--gray-200', '#e2e8f0');
-        root.style.setProperty('--gray-300', '#cbd5e1');
-        root.style.setProperty('--gray-400', '#94a3b8');
-        root.style.setProperty('--gray-500', '#64748b');
-        root.style.setProperty('--gray-600', '#475569');
-        root.style.setProperty('--gray-700', '#334155');
-        root.style.setProperty('--gray-800', '#1e293b');
-        root.style.setProperty('--gray-900', '#0f172a');
-        document.querySelector('.app-header .header-actions button i').className = 'fas fa-moon';
-        document.body.style.background = '#f8fafc';
-        showToast('☀️ Light mode', 'info');
+function getStoredTheme() {
+    return localStorage.getItem('pdi-theme') || 'light';
+}
+
+function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    localStorage.setItem('pdi-theme', theme);
+
+    const icon = document.querySelector('.app-header .header-actions button[title="Theme"] i');
+    if (icon) {
+        icon.className = isDark ? 'fas fa-sun' : 'fas fa-moon';
     }
+}
+
+function toggleDarkMode() {
+    const nextTheme = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(nextTheme);
     renderGroups();
+    showToast(nextTheme === 'dark' ? '🌙 Dark mode enabled' : '☀️ Light mode enabled', 'info');
+}
+
+function initTheme() {
+    applyTheme(getStoredTheme());
 }
 
 // ─── START ───
