@@ -105,15 +105,33 @@ body[data-theme="dark"] {
 
 .app-header .brand {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    font-size: 17px;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.app-header .brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.05;
+}
+
+.app-header .company-name {
+    font-size: 22px;
+    font-weight: 900;
+    opacity: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.app-header .app-name {
+    font-size: 16px;
+    font-weight: 600;
     letter-spacing: -0.3px;
+    opacity: 0.92;
 }
 
 .app-header .brand i {
-    font-size: 20px;
+    font-size: 24px;
     color: #fbbf24;
 }
 
@@ -262,8 +280,8 @@ body[data-theme="dark"] {
 }
 
 .filter-tabs .tab:active { transform: scale(0.94); }
-.filter-tabs .tab.active { background: var(--primary); color: #fff; box-shadow: 0 2px 10px rgba(26, 58, 92, 0.20); }
-
+.filter-tabs .tab.active { background: var(--primary); color: #fff; box-shadow: 0 2px 10px rgba(26, 58, 92, 0.20); }.filter-tabs .tab:hover,
+.filter-tabs .tab:focus-visible { background: var(--primary-light); color: #fff; }
 .insight-banner {
     display: flex;
     align-items: center;
@@ -515,7 +533,8 @@ body[data-theme="dark"] {
     min-width: 44px;
     text-align: center;
 }
-.item-actions .status-btn:hover {
+.item-actions .status-btn:hover,
+.item-actions .status-btn:focus-visible {
     border-color: var(--primary-light);
     color: var(--primary-light);
     transform: translateY(-1px);
@@ -587,6 +606,17 @@ body[data-theme="dark"] {
     max-width: 160px;
 }
 .bottom-bar button:active { transform: scale(0.94); }
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+.group-header:focus-visible,
+.filter-tabs .tab:focus-visible,
+.photo-fail-area label:focus-visible,
+.modal .modal-actions button:focus-visible {
+    outline: 3px solid var(--primary-light);
+    outline-offset: 2px;
+}
+
 .bottom-bar .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 12px rgba(26, 58, 92, 0.20); }
 .bottom-bar .btn-outline { background: var(--surface); color: var(--text-primary); border: 1.5px solid var(--border); }
 

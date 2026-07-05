@@ -449,6 +449,7 @@ let inspectionItems = [];
 let currentFilter = 'all';
 let searchQuery = '';
 let currentlyOpenGroup = null; // tracks which group is open
+let modalPreviouslyFocused = null;
 
 // ─── INIT ───
 function init() {
@@ -502,7 +503,8 @@ function getFilteredGroups() {
         const q = searchQuery.trim().toLowerCase();
         groups = groups.filter(g =>
             g.adc.toLowerCase().includes(q) ||
-            g.items.some(i => i.picp.toLowerCase().includes(q) || i.pdc.toLowerCase().includes(q))
+            g.items.some(i => [i.picp, i.pdc, i.sadc, i.pldc, i.method, i.spec]
+                .some(value => String(value).toLowerCase().includes(q)))
         );
     }
     return groups;
@@ -557,8 +559,8 @@ function renderGroups() {
                         <div class="item-spec">${escapeHtml(item.spec)}</div>
                         <div class="item-evidence ${showEvidence ? 'visible' : ''}">
                             <div class="photo-fail-area ${showEvidence ? 'visible' : ''}" id="photoArea-${item.id}">
-                                <label for="photo-${item.id}" title="Upload evidence photo">
-                                    <i class="fas fa-camera"></i>
+                                <label for="photo-${item.id}" title="Upload evidence photo" aria-label="Upload evidence photo for ${escapeHtml(item.picp)}">
+                                    <i class="fas fa-camera" aria-hidden="true"></i>
                                     <span>Photo</span>
                                 </label>
                                 <input type="file" id="photo-${item.id}" accept="image/*" capture="environment" onchange="handlePhoto(${item.id}, this)" />
@@ -568,29 +570,30 @@ function renderGroups() {
                         </div>
                     </div>
                     <div class="item-actions">
-                        <button class="status-btn btn-pass ${item.status === 'PASS' ? 'active' : ''}" onclick="setStatus(${item.id}, 'PASS')">
-                            <i class="fas fa-check"></i>
+                        <button type="button" class="status-btn btn-pass ${item.status === 'PASS' ? 'active' : ''}" onclick="setStatus(${item.id}, 'PASS')" aria-pressed="${item.status === 'PASS'}" aria-label="Mark ${escapeHtml(item.picp)} as pass">
+                            <i class="fas fa-check" aria-hidden="true"></i>
                         </button>
-                        <button class="status-btn btn-fail ${isFail ? 'active' : ''}" onclick="setStatus(${item.id}, 'FAIL')">
-                            <i class="fas fa-times"></i>
+                        <button type="button" class="status-btn btn-fail ${isFail ? 'active' : ''}" onclick="setStatus(${item.id}, 'FAIL')" aria-pressed="${isFail}" aria-label="Mark ${escapeHtml(item.picp)} as fail">
+                            <i class="fas fa-times" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
             `;
         }).join('');
 
+        const contentId = `group-content-${group.adc.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
         return `
             <div class="group-card">
-                <div class="group-header" onclick="toggleGroup('${group.adc}')">
+                <div class="group-header" role="button" tabindex="0" aria-expanded="${isOpen}" aria-controls="${contentId}" onclick="toggleGroup('${group.adc}')" onkeydown="handleGroupKeyDown(event, '${group.adc}')">
                     <div class="group-info">
                         <div class="group-title">
                             ${group.adc}
                             <span class="badge">${group.items.length}</span>
                         </div>
                         <div class="group-meta">
-                            <span class="stat-chip pass-chip"><i class="fas fa-check-circle"></i> ${group.passCount}</span>
-                            <span class="stat-chip fail-chip"><i class="fas fa-times-circle"></i> ${group.failCount}</span>
-                            <span class="stat-chip pend-chip"><i class="fas fa-minus-circle"></i> ${group.pendCount}</span>
+                            <span class="stat-chip pass-chip"><i class="fas fa-check-circle" aria-hidden="true"></i> ${group.passCount}</span>
+                            <span class="stat-chip fail-chip"><i class="fas fa-times-circle" aria-hidden="true"></i> ${group.failCount}</span>
+                            <span class="stat-chip pend-chip"><i class="fas fa-minus-circle" aria-hidden="true"></i> ${group.pendCount}</span>
                         </div>
                     </div>
                     <div class="group-progress">
@@ -620,15 +623,34 @@ function toggleGroup(adc) {
     renderGroups(); // re-render to reflect the new open state
 }
 
+function handleGroupKeyDown(event, adc) {
+    const keys = ['Enter', ' '];
+    if (keys.includes(event.key)) {
+        event.preventDefault();
+        toggleGroup(adc);
+    }
+}
+
 // ─── STATUS ───
 function setStatus(id, status) {
     const item = inspectionItems.find(i => i.id === id);
     if (!item) return;
 
     if (status === 'FAIL' && item.status !== 'FAIL') {
-        openModal('Confirm Fail', `Mark <strong>${item.picp}</strong> as FAIL?<br><small>You will need to upload a photo evidence.</small>`, () => {
-            applyStatus(item, status);
-        });
+        const modalHtml = `
+            <div>Mark <strong>${escapeHtml(item.picp)}</strong> as <strong>FAIL</strong>.</div>
+            <div style="margin-top:8px">
+                <label for="modal-photo-input" class="photo-upload-label">Upload evidence photo<span style="color:var(--danger)"> *</span></label>
+                <input type="file" id="modal-photo-input" accept="image/*" capture="environment" />
+                <div><img id="modal-photo-preview" class="photo-preview-fail" src="" alt="evidence preview" style="display:none;margin-top:8px;max-width:160px;"/></div>
+            </div>
+            <div style="margin-top:8px">
+                <textarea id="modal-remarks" placeholder="Add remarks (optional)" style="width:100%;min-height:80px;border-radius:8px;border:1px solid var(--border);padding:8px;font:inherit"></textarea>
+            </div>
+        `;
+        openModal('Confirm Fail', modalHtml, () => {
+            applyStatus(item, 'FAIL');
+        }, { requirePhoto: true, itemId: item.id });
         return;
     }
 
@@ -697,8 +719,12 @@ function setupEventListeners() {
 
     document.querySelectorAll('.filter-tabs .tab').forEach(tab => {
         tab.addEventListener('click', () => {
-            document.querySelectorAll('.filter-tabs .tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.filter-tabs .tab').forEach(t => {
+                t.classList.remove('active');
+                t.setAttribute('aria-pressed', 'false');
+            });
             tab.classList.add('active');
+            tab.setAttribute('aria-pressed', 'true');
             const map = { 'All': 'all', 'Pass': 'pass', 'Fail': 'fail', 'Pending': 'pending' };
             currentFilter = map[tab.textContent.trim()] || 'all';
             renderGroups();
@@ -726,20 +752,91 @@ function showToast(message, type = 'info') {
 // ─── MODAL ───
 let modalCallback = null;
 
-function openModal(title, message, onConfirm) {
+function openModal(title, message, onConfirm, options = {}) {
     document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalMessage').innerHTML = message;
+    const modalMessageEl = document.getElementById('modalMessage');
+    modalMessageEl.innerHTML = message;
     document.getElementById('modalOverlay').classList.add('open');
     modalCallback = onConfirm;
-    document.getElementById('modalConfirmBtn').onclick = () => {
+    modalPreviouslyFocused = document.activeElement;
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    const cancelBtn = document.querySelector('#modalOverlay .modal-actions .btn-outline');
+
+    if (options.requirePhoto) {
+        confirmBtn.disabled = true;
+        confirmBtn.setAttribute('aria-disabled', 'true');
+        const modalInput = document.getElementById('modal-photo-input');
+        const preview = document.getElementById('modal-photo-preview');
+        const remarks = document.getElementById('modal-remarks');
+        if (modalInput) {
+            const changeHandler = (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const item = inspectionItems.find(i => i.id === options.itemId);
+                    if (!item) return;
+                    item.photo = ev.target.result;
+                    if (preview) {
+                        preview.src = item.photo;
+                        preview.style.display = 'block';
+                    }
+                    if (remarks && remarks.value) item.remarks = remarks.value;
+                    confirmBtn.disabled = false;
+                    confirmBtn.removeAttribute('aria-disabled');
+                    modalInput.removeEventListener('change', changeHandler);
+                };
+                reader.readAsDataURL(f);
+            };
+            modalInput.addEventListener('change', changeHandler);
+        }
+    } else {
+        confirmBtn.disabled = false;
+        confirmBtn.removeAttribute('aria-disabled');
+    }
+
+    const callback = modalCallback;
+    confirmBtn.onclick = () => {
         closeModal();
-        if (modalCallback) modalCallback();
+        if (callback) callback();
     };
+    cancelBtn.onclick = () => closeModal();
+    document.addEventListener('keydown', handleModalKeydown);
+    confirmBtn.focus();
 }
 
 function closeModal() {
     document.getElementById('modalOverlay').classList.remove('open');
     modalCallback = null;
+    document.removeEventListener('keydown', handleModalKeydown);
+    if (modalPreviouslyFocused && modalPreviouslyFocused.focus) {
+        modalPreviouslyFocused.focus();
+    }
+}
+
+function handleModalKeydown(event) {
+    if (event.key === 'Escape') {
+        event.preventDefault();
+        closeModal();
+        return;
+    }
+    if (event.key !== 'Tab') return;
+
+    const modal = document.querySelector('#modalOverlay .modal');
+    const focusable = Array.from(modal.querySelectorAll('button'));
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const activeElement = document.activeElement;
+
+    if (event.shiftKey && activeElement === first) {
+        event.preventDefault();
+        last.focus();
+    } else if (!event.shiftKey && activeElement === last) {
+        event.preventDefault();
+        first.focus();
+    }
 }
 
 // ─── EXPORT / IMPORT ───

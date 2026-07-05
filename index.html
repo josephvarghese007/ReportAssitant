@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
-    <title>Bus PDI · Grouped Road Test</title>
+    <title>BusTech Engineering · Bus PDI Road Test</title>
     <link rel="stylesheet" href="style.css" />
     <!-- Font & Icons (kept here for simplicity) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -18,11 +18,14 @@
         <div class="top-row">
             <div class="brand">
                 <i class="fas fa-bus"></i>
-                <span>PDI Road Test</span>
+                <div class="brand-text">
+                    <span class="company-name">BusTech Engineering</span>
+                    <span class="app-name">PDI Road Test</span>
+                </div>
             </div>
             <div class="header-actions">
-                <button onclick="scanQR()" title="Scan QR"><i class="fas fa-qrcode"></i></button>
-                <button onclick="toggleDarkMode()" title="Theme"><i class="fas fa-moon"></i></button>
+                <button onclick="scanQR()" title="Scan QR" aria-label="Scan QR code"><i class="fas fa-qrcode"></i></button>
+                <button onclick="toggleDarkMode()" title="Theme" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
             </div>
         </div>
         <div class="subtitle">
@@ -32,7 +35,7 @@
     </header>
 
     <!-- STATS -->
-    <section class="stats-grid" id="statsGrid">
+    <section class="stats-grid" id="statsGrid" aria-live="polite" role="status">
         <div class="stat-item">
             <div class="stat-number total" id="totalCount">0</div>
             <div class="stat-label">Total</div>
@@ -54,14 +57,14 @@
     <!-- TOOLBAR -->
     <div class="toolbar">
         <div class="search-wrap">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Search assemblies..." autocomplete="off" />
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text" id="searchInput" placeholder="Search assemblies..." autocomplete="off" aria-label="Search assemblies" />
         </div>
-        <div class="filter-tabs" id="filterTabs">
-            <button class="tab active" data-filter="all">All</button>
-            <button class="tab" data-filter="pass">Pass</button>
-            <button class="tab" data-filter="fail">Fail</button>
-            <button class="tab" data-filter="pending">Pending</button>
+        <div class="filter-tabs" id="filterTabs" role="tablist" aria-label="Filter inspection groups">
+            <button type="button" class="tab active" data-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="tab" data-filter="pass" aria-pressed="false">Pass</button>
+            <button type="button" class="tab" data-filter="fail" aria-pressed="false">Fail</button>
+            <button type="button" class="tab" data-filter="pending" aria-pressed="false">Pending</button>
         </div>
     </div>
 
@@ -70,19 +73,18 @@
 
     <!-- BOTTOM BAR -->
     <div class="bottom-bar">
-        <button class="btn-outline" onclick="exportPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
-        <button class="btn-outline" onclick="exportCSV()"><i class="fas fa-file-excel"></i> CSV</button>
-        <button class="btn-primary" onclick="saveJSON()"><i class="fas fa-save"></i> Save</button>
-        <button class="btn-outline" onclick="document.getElementById('importJsonInput').click()">
-            <i class="fas fa-upload"></i> Load
-        </button>
+        <button type="button" class="btn-outline" onclick="exportPDF()" aria-label="Export PDF"><i class="fas fa-file-pdf" aria-hidden="true"></i> PDF</button>
+        <button type="button" class="btn-outline" onclick="exportCSV()" aria-label="Export CSV"><i class="fas fa-file-excel" aria-hidden="true"></i> CSV</button>
+        <button type="button" class="btn-primary" onclick="saveJSON()" aria-label="Save inspection data"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
+        <button type="button" class="btn-outline" onclick="document.getElementById('importJsonInput').click()" aria-label="Load saved JSON file">
+            <i class="fas fa-upload" aria-hidden="true"></i> Load
         <input type="file" id="importJsonInput" accept=".json" onchange="importJSON(event)" />
     </div>
 
     <!-- TOAST & MODAL -->
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="true"></div>
     <div class="modal-overlay" id="modalOverlay">
-        <div class="modal">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
             <h2 id="modalTitle">Confirm Fail</h2>
             <p id="modalMessage">Marking as <strong>FAIL</strong>. Please ensure you capture a photo as evidence.</p>
             <div class="modal-actions">
