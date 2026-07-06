@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>BusTech Engineering · Bus PDI Road Test</title>
     <link rel="stylesheet" href="style.css" />
+    <link rel="manifest" href="manifest.json" />
     <!-- Font & Icons (kept here for simplicity) -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -25,12 +26,25 @@
             </div>
             <div class="header-actions">
                 <button onclick="scanQR()" title="Scan QR" aria-label="Scan QR code"><i class="fas fa-qrcode"></i></button>
+                <button onclick="confirmReset()" title="Reset Inspection" aria-label="Reset all inspection data"><i class="fas fa-undo"></i></button>
                 <button onclick="toggleDarkMode()" title="Theme" aria-label="Toggle theme"><i class="fas fa-moon"></i></button>
             </div>
         </div>
         <div class="subtitle">
-            <i class="fas fa-clipboard-check"></i>
-            Chassis Level-2 · Grouped Inspection
+            <div class="subtitle-text">
+                <i class="fas fa-clipboard-check"></i>
+                Chassis Level-2 · Grouped Inspection
+            </div>
+            <div class="header-timer" id="headerTimer" title="2-Hour Countdown Timer">
+                <i class="fas fa-stopwatch" id="timerIcon"></i>
+                <span id="timerDisplay">02:00:00</span>
+                <button type="button" class="btn-timer-toggle" id="timerControlBtn" onclick="toggleTimer()" aria-label="Pause timer">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button type="button" class="btn-timer-reset" id="timerResetBtn" onclick="resetTimer()" aria-label="Reset timer">
+                    <i class="fas fa-redo-alt"></i>
+                </button>
+            </div>
         </div>
     </header>
 
@@ -78,6 +92,7 @@
         <button type="button" class="btn-primary" onclick="saveJSON()" aria-label="Save inspection data"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
         <button type="button" class="btn-outline" onclick="document.getElementById('importJsonInput').click()" aria-label="Load saved JSON file">
             <i class="fas fa-upload" aria-hidden="true"></i> Load
+        </button>
         <input type="file" id="importJsonInput" accept=".json" onchange="importJSON(event)" />
     </div>
 
