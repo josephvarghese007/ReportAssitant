@@ -158,12 +158,91 @@ body[data-theme="dark"] {
 
 .app-header .subtitle {
     font-size: 12px;
-    opacity: 0.8;
-    margin-top: 6px;
+    opacity: 0.9;
+    margin-top: 8px;
     font-weight: 400;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.subtitle-text {
+    display: flex;
+    align-items: center;
     gap: 6px;
+    opacity: 0.85;
+}
+
+.header-timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    font-size: 13.5px;
+    color: #ffffff;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header-timer.warning {
+    background: #f59e0b !important;
+    color: #0f172a !important;
+    border-color: rgba(245, 158, 11, 0.4);
+    animation: timer-pulse 1.2s infinite alternate;
+}
+
+.header-timer.danger {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: rgba(239, 68, 68, 0.4);
+    animation: timer-pulse 0.6s infinite alternate;
+}
+
+@keyframes timer-pulse {
+    from {
+        transform: scale(1);
+        box-shadow: 0 0 0 0px rgba(255, 255, 255, 0.2);
+    }
+    to {
+        transform: scale(1.04);
+        box-shadow: 0 0 8px 4px rgba(255, 255, 255, 0.1);
+    }
+}
+
+.header-timer button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.8;
+    transition: opacity 0.2s, transform 0.2s;
+    border-radius: 50%;
+}
+
+.header-timer button:hover {
+    opacity: 1;
+    transform: scale(1.15);
+}
+
+.header-timer button:active {
+    transform: scale(0.9);
+}
+
+.header-timer #timerIcon {
+    font-size: 12px;
+    opacity: 0.9;
 }
 
 /* Stats */
@@ -722,7 +801,7 @@ textarea:focus-visible,
 @media print {
     body { background: #fff !important; padding: 0 !important; }
     .app-header { background: #1a3a5c !important; color: #fff !important; padding: 12px 20px !important; position: static !important; box-shadow: none !important; }
-    .app-header .header-actions, .toolbar, .bottom-bar, .group-header .group-toggle, .item-actions .status-btn, .photo-fail-area label, .toast-container, .modal-overlay { display: none !important; }
+    .app-header .header-actions, .toolbar, .bottom-bar, .group-header .group-toggle, .item-actions .status-btn, .photo-fail-area label, .toast-container, .modal-overlay, .header-timer button { display: none !important; }
     .stats-grid { box-shadow: none !important; border: 1px solid #ddd !important; margin: 10px 20px !important; }
     .group-list { padding: 10px 20px !important; }
     .group-card { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; page-break-inside: avoid; margin-bottom: 12px !important; }
