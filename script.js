@@ -451,8 +451,90 @@ let searchQuery = '';
 let currentlyOpenGroup = null; // tracks which group is open
 let modalPreviouslyFocused = null;
 
+// ─── TIMER STATE ───
+let timerInterval = null;
+let timerSecondsLeft = 7200; // 2 hours
+let isTimerRunning = false;
+
+// ─── SAVE / AUTO-SAVE ───
+function saveToLocalStorage() {
+    try {
+        localStorage.setItem('pdi-inspection-items', JSON.stringify(inspectionItems));
+    } catch (e) {
+        console.error('Failed to save inspection items', e);
+        showToast('⚠️ Storage full. Some photo attachments may be too large.', 'error');
+    }
+}
+
+// ─── IMAGE COMPRESSION ───
+function compressImage(file, callback) {
+    const reader = new FileReader();
+    reader.onload = function (event) {
+        const img = new Image();
+        img.onload = function () {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const maxDim = 1024; // standard dimension for reporting
+            if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+            callback(compressedBase64);
+        };
+        img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
 // ─── INIT ───
 function init() {
+    initTheme();
+    setupEventListeners();
+    initTimer();
+
+    const savedItems = localStorage.getItem('pdi-inspection-items');
+    if (savedItems) {
+        try {
+            const parsed = JSON.parse(savedItems);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                // Restore modal
+                openModal('Resume Session?', `
+                    <p>We found an in-progress inspection from your previous session.</p>
+                    <p style="margin-top:8px">Would you like to <strong>Resume</strong> it or <strong>Start Fresh</strong>?</p>
+                `, () => {
+                    inspectionItems = parsed;
+                    renderGroups();
+                    updateStats();
+                    showToast('📂 Previous session restored', 'success');
+                }, {
+                    confirmText: 'Resume',
+                    cancelText: 'Start Fresh',
+                    onCancel: () => {
+                        startFreshSession();
+                    }
+                });
+                return;
+            }
+        } catch (e) {
+            console.error('Failed to parse saved items', e);
+        }
+    }
+
+    startFreshSession();
+}
+
+function startFreshSession() {
     inspectionItems = INSPECTION_DATA.map((item, index) => ({
         ...item,
         id: index,
@@ -460,10 +542,20 @@ function init() {
         photo: null,
         remarks: ''
     }));
-    initTheme();
+    resetTimer();
+    saveToLocalStorage();
     renderGroups();
     updateStats();
-    setupEventListeners();
+}
+
+function confirmReset() {
+    openModal('Reset Inspection?', `
+        <p>Are you sure you want to reset all inspection checkpoints, photos, and remarks?</p>
+        <p style="color:var(--danger);margin-top:8px;">⚠️ This action cannot be undone unless you have exported your data.</p>
+    `, () => {
+        startFreshSession();
+        showToast('↩️ Inspection reset successful', 'info');
+    }, { confirmText: 'Reset All', cancelText: 'Cancel' });
 }
 
 // ─── GROUP DATA ───
@@ -548,7 +640,7 @@ function renderGroups() {
 
         const isOpen = currentlyOpenGroup === group.adc;
 
-        const itemsHtml = group.items.map(item => {
+        const itemsHtml = isOpen ? group.items.map(item => {
             const isFail = item.status === 'FAIL';
             const showEvidence = isFail || item.photo || item.remarks;
             return `
@@ -579,7 +671,7 @@ function renderGroups() {
                     </div>
                 </div>
             `;
-        }).join('');
+        }).join('') : '';
 
         const contentId = `group-content-${group.adc.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
         return `
@@ -649,6 +741,10 @@ function setStatus(id, status) {
             </div>
         `;
         openModal('Confirm Fail', modalHtml, () => {
+            const modalRemarks = document.getElementById('modal-remarks');
+            if (modalRemarks) {
+                item.remarks = modalRemarks.value;
+            }
             applyStatus(item, 'FAIL');
         }, { requirePhoto: true, itemId: item.id });
         return;
@@ -665,6 +761,7 @@ function applyStatus(item, status) {
     if (status === 'PASS') {
         item.photo = null; // clear photo if passed
     }
+    saveToLocalStorage();
     renderGroups();
     updateStats();
     const msg = status === 'PASS' ? '✅ Marked PASS' : status === 'FAIL' ? '❌ Marked FAIL' : '↩️ Status cleared';
@@ -680,21 +777,21 @@ function applyStatus(item, status) {
 function handlePhoto(id, input) {
     const file = input.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    compressImage(file, (compressedBase64) => {
         const item = inspectionItems.find(i => i.id === id);
         if (!item) return;
-        item.photo = e.target.result;
+        item.photo = compressedBase64;
+        saveToLocalStorage();
         renderGroups();
-        showToast('📸 Evidence photo captured', 'success');
-    };
-    reader.readAsDataURL(file);
+        showToast('📸 Evidence photo compressed & saved', 'success');
+    });
 }
 
 function updateRemarks(id, value) {
     const item = inspectionItems.find(i => i.id === id);
     if (!item) return;
     item.remarks = value;
+    saveToLocalStorage();
 }
 
 // ─── STATS ───
@@ -762,31 +859,30 @@ function openModal(title, message, onConfirm, options = {}) {
     const confirmBtn = document.getElementById('modalConfirmBtn');
     const cancelBtn = document.querySelector('#modalOverlay .modal-actions .btn-outline');
 
+    // Customize button text
+    confirmBtn.textContent = options.confirmText || 'Confirm';
+    cancelBtn.textContent = options.cancelText || 'Cancel';
+
     if (options.requirePhoto) {
         confirmBtn.disabled = true;
         confirmBtn.setAttribute('aria-disabled', 'true');
         const modalInput = document.getElementById('modal-photo-input');
         const preview = document.getElementById('modal-photo-preview');
-        const remarks = document.getElementById('modal-remarks');
         if (modalInput) {
             const changeHandler = (e) => {
                 const f = e.target.files[0];
                 if (!f) return;
-                const reader = new FileReader();
-                reader.onload = (ev) => {
+                compressImage(f, (compressedBase64) => {
                     const item = inspectionItems.find(i => i.id === options.itemId);
                     if (!item) return;
-                    item.photo = ev.target.result;
+                    item.photo = compressedBase64;
                     if (preview) {
-                        preview.src = item.photo;
+                        preview.src = compressedBase64;
                         preview.style.display = 'block';
                     }
-                    if (remarks && remarks.value) item.remarks = remarks.value;
                     confirmBtn.disabled = false;
                     confirmBtn.removeAttribute('aria-disabled');
-                    modalInput.removeEventListener('change', changeHandler);
-                };
-                reader.readAsDataURL(f);
+                });
             };
             modalInput.addEventListener('change', changeHandler);
         }
@@ -800,7 +896,10 @@ function openModal(title, message, onConfirm, options = {}) {
         closeModal();
         if (callback) callback();
     };
-    cancelBtn.onclick = () => closeModal();
+    cancelBtn.onclick = () => {
+        closeModal();
+        if (options.onCancel) options.onCancel();
+    };
     document.addEventListener('keydown', handleModalKeydown);
     confirmBtn.focus();
 }
@@ -880,6 +979,7 @@ function importJSON(event) {
             const imported = JSON.parse(e.target.result);
             if (Array.isArray(imported) && imported.length > 0 && imported[0].id !== undefined) {
                 inspectionItems = imported;
+                saveToLocalStorage();
                 renderGroups();
                 updateStats();
                 showToast('📂 Data loaded successfully', 'success');
@@ -923,6 +1023,145 @@ function toggleDarkMode() {
 
 function initTheme() {
     applyTheme(getStoredTheme());
+}
+
+// ─── COUNTDOWN TIMER LOGIC (2 HOURS) ───
+function initTimer() {
+    const savedEndTime = localStorage.getItem('pdi-timer-end-time');
+    const savedLeftTime = localStorage.getItem('pdi-timer-left');
+    const savedIsRunning = localStorage.getItem('pdi-timer-is-running');
+
+    if (savedEndTime && savedIsRunning === 'true') {
+        const end = parseInt(savedEndTime, 10);
+        const left = Math.max(0, Math.floor((end - Date.now()) / 1000));
+        timerSecondsLeft = left;
+        if (left > 0) {
+            startTimerInterval();
+        } else {
+            timerSecondsLeft = 0;
+            updateTimerDisplay();
+            handleTimerExpiry();
+        }
+    } else if (savedLeftTime) {
+        timerSecondsLeft = parseInt(savedLeftTime, 10);
+        isTimerRunning = false;
+        updateTimerDisplay();
+        updateTimerControls();
+    } else {
+        timerSecondsLeft = 7200; // 2 hours
+        isTimerRunning = false;
+        updateTimerDisplay();
+        updateTimerControls();
+    }
+}
+
+function startTimerInterval() {
+    if (timerInterval) clearInterval(timerInterval);
+    isTimerRunning = true;
+    localStorage.setItem('pdi-timer-is-running', 'true');
+    const endTime = Date.now() + timerSecondsLeft * 1000;
+    localStorage.setItem('pdi-timer-end-time', endTime);
+    localStorage.removeItem('pdi-timer-left');
+
+    timerInterval = setInterval(() => {
+        const end = parseInt(localStorage.getItem('pdi-timer-end-time'), 10);
+        const left = Math.max(0, Math.floor((end - Date.now()) / 1000));
+        timerSecondsLeft = left;
+        updateTimerDisplay();
+
+        if (left <= 0) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            isTimerRunning = false;
+            localStorage.setItem('pdi-timer-is-running', 'false');
+            handleTimerExpiry();
+        }
+    }, 1000);
+    updateTimerControls();
+}
+
+function stopTimerInterval() {
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+    }
+    isTimerRunning = false;
+    localStorage.setItem('pdi-timer-is-running', 'false');
+    localStorage.setItem('pdi-timer-left', timerSecondsLeft);
+    localStorage.removeItem('pdi-timer-end-time');
+    updateTimerControls();
+}
+
+function toggleTimer() {
+    if (isTimerRunning) {
+        stopTimerInterval();
+        showToast('⏸️ Timer paused', 'info');
+    } else {
+        if (timerSecondsLeft <= 0) {
+            timerSecondsLeft = 7200;
+        }
+        startTimerInterval();
+        showToast('▶️ Timer started', 'info');
+    }
+}
+
+function resetTimer() {
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+    timerSecondsLeft = 7200;
+    isTimerRunning = false;
+    localStorage.setItem('pdi-timer-is-running', 'false');
+    localStorage.setItem('pdi-timer-left', timerSecondsLeft);
+    localStorage.removeItem('pdi-timer-end-time');
+    updateTimerDisplay();
+    updateTimerControls();
+}
+
+function updateTimerDisplay() {
+    const hrs = Math.floor(timerSecondsLeft / 3600);
+    const mins = Math.floor((timerSecondsLeft % 3600) / 60);
+    const secs = timerSecondsLeft % 60;
+    const displayStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    
+    const displayEl = document.getElementById('timerDisplay');
+    if (displayEl) {
+        displayEl.textContent = displayStr;
+    }
+
+    const timerWidget = document.getElementById('headerTimer');
+    if (timerWidget) {
+        if (timerSecondsLeft <= 0) {
+            timerWidget.className = 'header-timer danger';
+        } else if (timerSecondsLeft < 900) { // < 15 mins
+            timerWidget.className = 'header-timer warning';
+        } else {
+            timerWidget.className = 'header-timer';
+        }
+    }
+}
+
+function updateTimerControls() {
+    const controlBtn = document.getElementById('timerControlBtn');
+    if (controlBtn) {
+        controlBtn.innerHTML = isTimerRunning ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+        controlBtn.title = isTimerRunning ? 'Pause Timer' : 'Resume Timer';
+    }
+}
+
+function handleTimerExpiry() {
+    showToast('🚨 PDI Road Test inspection time has expired!', 'error');
+    openModal('Time Expired', `
+        <p>The 2-hour countdown has ended. Please finalize your report as soon as possible.</p>
+    `, null, { confirmText: 'Acknowledge' });
+}
+
+// ─── SERVICE WORKER REGISTRATION ───
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js')
+            .then(reg => console.log('Service Worker registered successfully!', reg.scope))
+            .catch(err => console.log('Service Worker registration failed:', err));
+    });
 }
 
 // ─── START ───
