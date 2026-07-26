@@ -21,7 +21,7 @@ export function Header({ onReset, onScanQR }: HeaderProps) {
     <header className="sticky top-0 z-40 bg-gradient-to-br from-slate-900 to-blue-700 text-white shadow-xl">
       <div className="flex items-center justify-between px-4 pt-3 pb-2">
         <div className="flex items-center gap-2">
-          <Image src="/bustech-logo.svg" alt="BusTech Engineering" width={32} height={32} className="rounded-lg" priority />
+          <Image src="/bustech-logo.svg" alt="BusTech Engineering" width={132} height={44} className="h-11 w-auto" priority />
           <div>
             <div className="font-bold text-sm leading-tight">BusTech Engineering</div>
             <div className="text-xs text-blue-200">PDI Road Test</div>

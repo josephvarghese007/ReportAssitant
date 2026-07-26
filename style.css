@@ -131,9 +131,8 @@ body[data-theme="dark"] {
 }
 
 .app-header .brand-logo {
-    width: 32px;
-    height: 32px;
-    border-radius: 8px;
+    width: auto;
+    height: 44px;
     object-fit: contain;
 }
 
@@ -849,7 +848,7 @@ textarea:focus-visible,
     .bottom-bar { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
     .bottom-bar button { font-size: 11px; padding: 7px 10px; flex: 1 1 calc(50% - 4px); max-width: none; min-width: 90px; }
     .app-header .brand { font-size: 15px; }
-    .app-header .brand-logo { width: 26px; height: 26px; }
+    .app-header .brand-logo { height: 34px; }
     .group-progress { width: 36px !important; height: 36px !important; }
     .group-progress .progress-text { font-size: 9px !important; }
     .toast-container { left: 8px; right: 8px; top: 76px; }
