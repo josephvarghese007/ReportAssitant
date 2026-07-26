@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" fill="none">
   <defs>
     <!-- Chrome/metallic body gradient -->
-    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#dbeafe"/>
       <stop offset="28%" stop-color="#ffffff"/>
       <stop offset="52%" stop-color="#e2e8f0"/>
@@ -9,30 +9,37 @@
       <stop offset="100%" stop-color="#93c5fd"/>
     </linearGradient>
     <!-- Deep blue outer shell gradient -->
-    <linearGradient id="blueShell" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#3b82f6"/>
-      <stop offset="40%" stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#1e3a8a"/>
+    <linearGradient id="blueShell" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="35%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#172554"/>
     </linearGradient>
-    <!-- Inner shadow gradient -->
-    <linearGradient id="innerShadow" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1e3a8a" stop-opacity="0.6"/>
-      <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0"/>
+    <!-- Blue wing tip gradient -->
+    <linearGradient id="tipGrad" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#172554"/>
     </linearGradient>
   </defs>
 
-  <!-- Outer swept blue wing shell -->
-  <path d="M18 28 C14 28, 8 32, 4 40 C8 48, 14 52, 18 52 L34 52 C38 52, 42 50, 46 48 L80 44 L240 44 C260 44, 280 46, 300 52 C306 54, 312 52, 316 48 C318 44, 318 36, 316 32 C312 28, 306 26, 300 28 C280 34, 260 36, 240 36 L80 32 C42 30, 38 28, 34 28 Z" fill="url(#blueShell)"/>
+  <!-- Left blue swept wing tip -->
+  <path d="M2 55 C6 35, 18 24, 34 24 L70 26 C58 34, 54 45, 56 55 C58 65, 64 74, 74 80 L34 82 C18 82, 6 75, 2 55 Z" fill="url(#tipGrad)"/>
 
-  <!-- Chrome inner badge -->
-  <path d="M28 34 C24 34, 18 36, 14 40 C18 44, 24 46, 28 46 L76 42 L242 42 C258 42, 274 44, 290 48 C294 49, 298 47, 300 44 C301 41, 301 39, 300 36 C298 33, 294 31, 290 32 C274 36, 258 38, 242 38 L76 34 C36 34, 32 34, 28 34 Z" fill="url(#chrome)" stroke="#60a5fa" stroke-width="0.5"/>
+  <!-- Right blue swept wing tip -->
+  <path d="M418 55 C414 35, 402 24, 386 24 L350 26 C362 34, 366 45, 364 55 C362 65, 356 74, 346 80 L386 82 C402 82, 414 75, 418 55 Z" fill="url(#tipGrad)"/>
+
+  <!-- Main chrome badge -->
+  <rect x="60" y="24" width="300" height="58" rx="16" ry="16" fill="url(#chrome)" stroke="#60a5fa" stroke-width="0.8"/>
+
+  <!-- Inner metallic inset -->
+  <rect x="68" y="30" width="284" height="46" rx="11" ry="11" fill="none" stroke="#93c5fd" stroke-width="1" stroke-opacity="0.6"/>
 
   <!-- Top highlight -->
-  <path d="M30 36 L242 40 C258 40, 274 38, 290 34" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.9" fill="none" stroke-linecap="round"/>
+  <path d="M74 34 H346 C355 34, 362 35, 366 38" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.95" fill="none" stroke-linecap="round"/>
   <!-- Bottom shadow -->
-  <path d="M30 44 L242 44 C258 44, 274 46, 290 50" stroke="#1e3a8a" stroke-width="1" stroke-opacity="0.25" fill="none" stroke-linecap="round"/>
+  <path d="M74 72 H346 C355 72, 362 70, 366 67" stroke="#1e3a8a" stroke-width="1.5" stroke-opacity="0.25" fill="none" stroke-linecap="round"/>
 
   <!-- Text -->
-  <text x="164" y="43" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="26" fill="#1e40af" font-style="italic" letter-spacing="0.5">BUSTECH</text>
-  <text x="166" y="53" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="12" fill="#1e40af" font-style="italic" letter-spacing="1">engineering</text>
+  <text x="210" y="55" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="34" fill="#1d4ed8" font-style="italic" letter-spacing="1">BUSTECH</text>
+  <text x="218" y="69" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="15" fill="#1d4ed8" font-style="italic" letter-spacing="1.5">engineering</text>
 </svg>
