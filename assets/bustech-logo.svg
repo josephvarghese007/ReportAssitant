@@ -1,28 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 64" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
   <defs>
-    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#bfdbfe"/>
-      <stop offset="35%" stop-color="#ffffff"/>
-      <stop offset="65%" stop-color="#e2e8f0"/>
+    <!-- Chrome/metallic body gradient -->
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="28%" stop-color="#ffffff"/>
+      <stop offset="52%" stop-color="#e2e8f0"/>
+      <stop offset="78%" stop-color="#bfdbfe"/>
       <stop offset="100%" stop-color="#93c5fd"/>
     </linearGradient>
-    <linearGradient id="cap" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#1d4ed8"/>
-      <stop offset="50%" stop-color="#2563eb"/>
+    <!-- Deep blue outer shell gradient -->
+    <linearGradient id="blueShell" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="40%" stop-color="#1d4ed8"/>
       <stop offset="100%" stop-color="#1e3a8a"/>
     </linearGradient>
+    <!-- Inner shadow gradient -->
+    <linearGradient id="innerShadow" x1="0" y1="0" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#1e3a8a" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#1e3a8a" stop-opacity="0"/>
+    </linearGradient>
   </defs>
-  <!-- Left curved cap -->
-  <path d="M12 20c0-8 8-12 16-10l-2 4c-6-1.2-10 2-10 8v20c0 6 4 9.2 10 8l2 4c-8 2-16-2-16-10V20Z" fill="url(#cap)"/>
-  <!-- Right curved cap -->
-  <path d="M228 20c0-8-8-12-16-10l2 4c6-1.2 10 2 10 8v20c0 6-4 9.2-10 8l-2 4c8 2 16-2 16-10V20Z" fill="url(#cap)"/>
-  <!-- Main metallic body -->
-  <rect x="16" y="16" width="208" height="32" rx="4" fill="url(#sheen)" stroke="#1d4ed8" stroke-width="2"/>
-  <!-- Top highlight line -->
-  <path d="M20 20h200" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.8" stroke-linecap="round"/>
-  <!-- Bottom shadow line -->
-  <path d="M20 44h200" stroke="#1d4ed8" stroke-width="1" stroke-opacity="0.25" stroke-linecap="round"/>
+
+  <!-- Outer swept blue wing shell -->
+  <path d="M18 28 C14 28, 8 32, 4 40 C8 48, 14 52, 18 52 L34 52 C38 52, 42 50, 46 48 L80 44 L240 44 C260 44, 280 46, 300 52 C306 54, 312 52, 316 48 C318 44, 318 36, 316 32 C312 28, 306 26, 300 28 C280 34, 260 36, 240 36 L80 32 C42 30, 38 28, 34 28 Z" fill="url(#blueShell)"/>
+
+  <!-- Chrome inner badge -->
+  <path d="M28 34 C24 34, 18 36, 14 40 C18 44, 24 46, 28 46 L76 42 L242 42 C258 42, 274 44, 290 48 C294 49, 298 47, 300 44 C301 41, 301 39, 300 36 C298 33, 294 31, 290 32 C274 36, 258 38, 242 38 L76 34 C36 34, 32 34, 28 34 Z" fill="url(#chrome)" stroke="#60a5fa" stroke-width="0.5"/>
+
+  <!-- Top highlight -->
+  <path d="M30 36 L242 40 C258 40, 274 38, 290 34" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.9" fill="none" stroke-linecap="round"/>
+  <!-- Bottom shadow -->
+  <path d="M30 44 L242 44 C258 44, 274 46, 290 50" stroke="#1e3a8a" stroke-width="1" stroke-opacity="0.25" fill="none" stroke-linecap="round"/>
+
   <!-- Text -->
-  <text x="120" y="34" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="24" fill="#1e40af" letter-spacing="1">BUSTECH</text>
-  <text x="120" y="44" text-anchor="middle" font-family="Arial, sans-serif" font-style="italic" font-weight="700" font-size="11" fill="#1e40af" letter-spacing="0.5">engineering</text>
+  <text x="164" y="43" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="26" fill="#1e40af" font-style="italic" letter-spacing="0.5">BUSTECH</text>
+  <text x="166" y="53" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="12" fill="#1e40af" font-style="italic" letter-spacing="1">engineering</text>
 </svg>
