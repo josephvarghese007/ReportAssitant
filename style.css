@@ -130,9 +130,10 @@ body[data-theme="dark"] {
     opacity: 0.92;
 }
 
-.app-header .brand i {
-    font-size: 24px;
-    color: #fbbf24;
+.app-header .brand-logo {
+    width: auto;
+    height: 52px;
+    object-fit: contain;
 }
 
 .app-header .header-actions button {
@@ -847,7 +848,7 @@ textarea:focus-visible,
     .bottom-bar { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
     .bottom-bar button { font-size: 11px; padding: 7px 10px; flex: 1 1 calc(50% - 4px); max-width: none; min-width: 90px; }
     .app-header .brand { font-size: 15px; }
-    .app-header .brand i { font-size: 17px; }
+    .app-header .brand-logo { height: 40px; }
     .group-progress { width: 36px !important; height: 36px !important; }
     .group-progress .progress-text { font-size: 9px !important; }
     .toast-container { left: 8px; right: 8px; top: 76px; }

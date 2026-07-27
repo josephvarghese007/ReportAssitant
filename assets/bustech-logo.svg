@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 110" fill="none">
+  <defs>
+    <!-- Chrome/metallic body gradient -->
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="28%" stop-color="#ffffff"/>
+      <stop offset="52%" stop-color="#e2e8f0"/>
+      <stop offset="78%" stop-color="#bfdbfe"/>
+      <stop offset="100%" stop-color="#93c5fd"/>
+    </linearGradient>
+    <!-- Deep blue outer shell gradient -->
+    <linearGradient id="blueShell" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563eb"/>
+      <stop offset="35%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+    <!-- Blue wing tip gradient -->
+    <linearGradient id="tipGrad" x1="0" y1="0" x2="0" y2="110" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Left blue swept wing tip -->
+  <path d="M2 55 C6 35, 18 24, 34 24 L70 26 C58 34, 54 45, 56 55 C58 65, 64 74, 74 80 L34 82 C18 82, 6 75, 2 55 Z" fill="url(#tipGrad)"/>
+
+  <!-- Right blue swept wing tip -->
+  <path d="M418 55 C414 35, 402 24, 386 24 L350 26 C362 34, 366 45, 364 55 C362 65, 356 74, 346 80 L386 82 C402 82, 414 75, 418 55 Z" fill="url(#tipGrad)"/>
+
+  <!-- Main chrome badge -->
+  <rect x="60" y="24" width="300" height="58" rx="16" ry="16" fill="url(#chrome)" stroke="#60a5fa" stroke-width="0.8"/>
+
+  <!-- Inner metallic inset -->
+  <rect x="68" y="30" width="284" height="46" rx="11" ry="11" fill="none" stroke="#93c5fd" stroke-width="1" stroke-opacity="0.6"/>
+
+  <!-- Top highlight -->
+  <path d="M74 34 H346 C355 34, 362 35, 366 38" stroke="#ffffff" stroke-width="2.5" stroke-opacity="0.95" fill="none" stroke-linecap="round"/>
+  <!-- Bottom shadow -->
+  <path d="M74 72 H346 C355 72, 362 70, 366 67" stroke="#1e3a8a" stroke-width="1.5" stroke-opacity="0.25" fill="none" stroke-linecap="round"/>
+
+  <!-- Text -->
+  <text x="210" y="55" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="900" font-size="34" fill="#1d4ed8" font-style="italic" letter-spacing="1">BUSTECH</text>
+  <text x="218" y="69" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="15" fill="#1d4ed8" font-style="italic" letter-spacing="1.5">engineering</text>
+</svg>
