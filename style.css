@@ -222,6 +222,42 @@ body[data-theme="dark"] {
     opacity: 0.9;
 }
 
+.metadata-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    padding: 12px;
+    margin: 10px 12px 0;
+    background: var(--surface-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.metadata-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.metadata-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.metadata-field input {
+    width: 100%;
+    min-height: 48px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--surface);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+}
+
 /* Stats */
 .stats-grid {
     display: grid;
@@ -361,6 +397,39 @@ body[data-theme="dark"] {
     display: flex;
     flex-direction: column;
     gap: 12px;
+}
+
+.global-progress {
+    margin: 6px 12px 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.global-progress-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.global-progress-track {
+    width: 100%;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--gray-100);
+    overflow: hidden;
+}
+
+.global-progress-fill {
+    height: 100%;
+    width: 0;
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+    transition: width 0.3s ease;
 }
 
 .group-card {
@@ -576,17 +645,18 @@ body[data-theme="dark"] {
 }
 
 .item-actions .status-btn {
-    padding: 4px 12px;
+    padding: 8px 14px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 700;
     border: 1.5px solid var(--gray-200);
-    background: transparent;
-    color: var(--gray-400);
+    background: #ffffff;
+    color: #1f2937;
     cursor: pointer;
     transition: var(--transition);
     font-family: inherit;
-    min-width: 44px;
+    min-width: 48px;
+    min-height: 48px;
     text-align: center;
 }
 .item-actions .status-btn:hover,
@@ -645,7 +715,7 @@ body[data-theme="dark"] {
 }
 
 .bottom-bar button {
-    padding: 8px 16px;
+    padding: 10px 16px;
     border-radius: 50px;
     font-size: 12px;
     font-weight: 600;
@@ -659,6 +729,7 @@ body[data-theme="dark"] {
     flex: 1;
     justify-content: center;
     min-width: 60px;
+    min-height: 48px;
     max-width: 160px;
 }
 .bottom-bar button:active { transform: scale(0.94); }
@@ -756,7 +827,7 @@ textarea:focus-visible,
 .modal p { color: var(--text-secondary); font-size: 14px; margin-bottom: 14px; }
 .modal .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .modal .modal-actions button {
-    padding: 8px 20px;
+    padding: 10px 20px;
     border-radius: 50px;
     font-size: 13px;
     font-weight: 600;
@@ -766,6 +837,7 @@ textarea:focus-visible,
     font-family: inherit;
     flex: 1;
     min-width: 60px;
+    min-height: 48px;
 }
 .modal .modal-actions button:active { transform: scale(0.94); }
 .modal .modal-actions .btn-primary { background: var(--primary); color: #fff; }
@@ -773,6 +845,79 @@ textarea:focus-visible,
 .modal .modal-actions .btn-outline { background: var(--surface-alt); color: var(--text-primary); }
 
 #importJsonInput { display: none; }
+
+.photo-upload-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 8px 0 6px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+#failEvidence {
+    width: 100%;
+    min-height: 48px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--surface-alt);
+    color: var(--text-primary);
+}
+
+#failEvidencePreview {
+    display: none;
+    margin-top: 10px;
+    max-width: 160px;
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+}
+
+.signature-section {
+    margin: 6px 12px 110px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+.signature-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.signature-head h3 {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+#clearSignatureBtn {
+    min-height: 40px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-alt);
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+#signaturePad {
+    width: 100%;
+    min-height: 180px;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    background: #fff;
+    touch-action: none;
+}
+
+.print-report {
+    display: none;
+}
 
 /* Print */
 @media print {
@@ -790,10 +935,20 @@ textarea:focus-visible,
     .photo-fail-area .photo-preview-fail.visible { display: block !important; width: 24px !important; height: 24px !important; }
     .item-actions .photo-fail-area.visible { display: flex !important; }
     .stat-chip, .item-actions .status-btn.active { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .print-report { display: block !important; padding: 12px 20px; }
+    .print-report h2 { margin: 8px 0; font-size: 20px; }
+    .print-report h3 { margin: 14px 0 6px; font-size: 16px; }
+    .print-report table { width: 100%; border-collapse: collapse; margin: 8px 0; }
+    .print-report table td, .print-report table th { border: 1px solid #ddd; padding: 6px; text-align: left; font-size: 12px; }
+    .print-report .report-failure { border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-bottom: 10px; break-inside: avoid; }
+    .print-report .report-failure img { max-width: 220px; border: 1px solid #ddd; border-radius: 6px; margin-top: 6px; }
+    .print-report .report-signature { max-width: 320px; border: 1px solid #ddd; border-radius: 6px; margin-top: 6px; }
 }
 
 @media (min-width: 640px) {
+    .metadata-section { margin: 12px 24px 0; padding: 14px 16px; }
     .stats-grid { padding: 16px 24px 14px; margin: -14px 24px 0; gap: 12px; }
+    .global-progress { margin: 8px 24px 10px; }
     .stat-item .stat-number { font-size: 26px; }
     .group-list { padding: 6px 24px 16px; }
     .bottom-bar button { max-width: 140px; }
@@ -802,9 +957,12 @@ textarea:focus-visible,
 }
 
 @media (min-width: 1024px) {
+    .metadata-section { max-width: 900px; margin: 12px auto 0; }
+    .global-progress { max-width: 900px; margin: 8px auto 10px; }
     .group-list { padding: 6px 32px 20px; max-width: 900px; margin: 0 auto; }
     .stats-grid { margin: -14px auto 0; max-width: 900px; }
     .toolbar { max-width: 900px; margin: 0 auto; }
+    .signature-section { max-width: 900px; margin: 8px auto 110px; }
 }
 
 @media (max-width: 420px) {
@@ -820,9 +978,9 @@ textarea:focus-visible,
     .item-row { align-items: flex-start; gap: 8px; }
     .item-row .item-info .item-title { font-size: 12px; }
     .item-actions { flex-wrap: wrap; justify-content: flex-end; }
-    .item-actions .status-btn { padding: 3px 10px; font-size: 10px; min-width: 36px; height: 32px; }
+    .item-actions .status-btn { min-height: 48px; min-width: 48px; font-size: 12px; }
     .bottom-bar { padding: 10px 10px calc(10px + env(safe-area-inset-bottom)); }
-    .bottom-bar button { font-size: 11px; padding: 7px 10px; flex: 1 1 calc(50% - 4px); max-width: none; min-width: 90px; }
+    .bottom-bar button { font-size: 11px; padding: 9px 10px; flex: 1 1 calc(50% - 4px); max-width: none; min-width: 120px; min-height: 48px; }
     .app-header .brand { font-size: 15px; }
     .app-header .brand i { font-size: 17px; }
     .group-progress { width: 36px !important; height: 36px !important; }

@@ -18,7 +18,7 @@
     <header class="app-header">
         <div class="top-row">
             <div class="brand">
-    <img src="IMG-20260726-WA0008.jpg"
+    <img src="assets/logo.jpg"
          alt="BusTech Engineering Logo"
          class="company-logo">
 
@@ -50,6 +50,22 @@
         </div>
     </header>
 
+    <!-- VEHICLE METADATA -->
+    <section class="metadata-section" aria-label="Vehicle identification details">
+        <div class="metadata-field">
+            <label for="vinInput">Chassis / VIN #</label>
+            <input type="text" id="vinInput" placeholder="Enter VIN/Chassis number" autocomplete="off" />
+        </div>
+        <div class="metadata-field">
+            <label for="odometerInput">Odometer Reading</label>
+            <input type="text" id="odometerInput" placeholder="Enter odometer reading" autocomplete="off" />
+        </div>
+        <div class="metadata-field">
+            <label for="inspectorIdInput">Inspector ID</label>
+            <input type="text" id="inspectorIdInput" placeholder="Enter inspector ID" autocomplete="off" />
+        </div>
+    </section>
+
     <!-- STATS -->
     <section class="stats-grid" id="statsGrid" aria-live="polite" role="status">
         <div class="stat-item">
@@ -74,7 +90,7 @@
     <div class="toolbar">
         <div class="search-wrap">
             <i class="fas fa-search" aria-hidden="true"></i>
-            <input type="text" id="searchInput" placeholder="Search assemblies..." autocomplete="off" aria-label="Search assemblies" />
+            <input type="text" id="searchInput" placeholder="Search assemblies..." autocomplete="off" aria-label="Search inspection items" />
         </div>
         <div class="filter-tabs" id="filterTabs" role="tablist" aria-label="Filter inspection groups">
             <button type="button" class="tab active" data-filter="all" aria-pressed="true">All</button>
@@ -84,12 +100,34 @@
         </div>
     </div>
 
+    <!-- GLOBAL PROGRESS -->
+    <section class="global-progress" aria-label="Inspection completion progress">
+        <div class="global-progress-head">
+            <span>Overall Progress</span>
+            <span id="globalProgressText">0 / 0 (0%)</span>
+        </div>
+        <div class="global-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="globalProgressTrack">
+            <div class="global-progress-fill" id="globalProgressFill"></div>
+        </div>
+    </section>
+
     <!-- GROUP LIST -->
     <div class="group-list" id="groupList"></div>
 
+    <!-- SIGNATURE -->
+    <section class="signature-section" aria-label="Inspector sign-off">
+        <div class="signature-head">
+            <h3>Inspector Final Sign-off</h3>
+            <button type="button" class="btn-outline" id="clearSignatureBtn">Clear Signature</button>
+        </div>
+        <canvas id="signaturePad" width="800" height="240" aria-label="Inspector signature pad"></canvas>
+    </section>
+
+    <section id="printReport" class="print-report" hidden></section>
+
     <!-- BOTTOM BAR -->
     <div class="bottom-bar">
-        <button type="button" class="btn-outline" onclick="exportPDF()" aria-label="Export PDF"><i class="fas fa-file-pdf" aria-hidden="true"></i> PDF</button>
+        <button type="button" class="btn-outline" onclick="exportPDF()" aria-label="Generate PDF report"><i class="fas fa-file-pdf" aria-hidden="true"></i> Generate PDF Report</button>
         <button type="button" class="btn-outline" onclick="exportCSV()" aria-label="Export CSV"><i class="fas fa-file-excel" aria-hidden="true"></i> CSV</button>
         <button type="button" class="btn-primary" onclick="saveJSON()" aria-label="Save inspection data"><i class="fas fa-save" aria-hidden="true"></i> Save</button>
         <button type="button" class="btn-outline" onclick="document.getElementById('importJsonInput').click()" aria-label="Load saved JSON file">
@@ -103,7 +141,12 @@
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
             <h2 id="modalTitle">Confirm Fail</h2>
-            <p id="modalMessage">Marking as <strong>FAIL</strong>. Please ensure you capture a photo as evidence.</p>
+            <div id="modalMessage">
+                <p>Marking as <strong>FAIL</strong>. Please ensure you capture a photo as evidence.</p>
+                <label for="failEvidence" class="photo-upload-label">Failure Evidence Photo <span style="color:var(--danger)">*</span></label>
+                <input type="file" id="failEvidence" accept="image/*" capture="environment" required />
+                <img id="failEvidencePreview" class="photo-preview-fail" src="" alt="Failure evidence preview" />
+            </div>
             <div class="modal-actions">
                 <button class="btn-outline" onclick="closeModal()">Cancel</button>
                 <button class="btn-danger" id="modalConfirmBtn">Confirm Fail</button>

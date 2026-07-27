@@ -1,10 +1,11 @@
-const CACHE_NAME = 'pdi-road-test-cache-v1';
+const CACHE_NAME = 'pdi-road-test-cache-v2';
 const ASSETS = [
   './',
   './index.html',
   './style.css',
   './script.js',
   './manifest.json',
+  './assets/logo.jpg',
   'https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css'
 ];

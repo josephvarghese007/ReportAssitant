@@ -448,21 +448,163 @@ const INSPECTION_DATA = [
 let inspectionItems = [];
 let currentFilter = 'all';
 let searchQuery = '';
-let currentlyOpenGroup = null; // tracks which group is open
+let currentlyOpenGroup = null;
+
+let vehicleMetadata = {
+    vin: '',
+    odometer: '',
+    inspectorId: ''
+};
+let inspectorSignature = '';
+
 let modalPreviouslyFocused = null;
+let modalCallback = null;
+let modalOptions = {};
+let modalFailEvidenceDataUrl = '';
 
 // ─── TIMER STATE ───
 let timerInterval = null;
-let timerSecondsLeft = 7200; // 2 hours
+let timerSecondsLeft = 7200;
 let isTimerRunning = false;
+let timerState = {
+    durationSeconds: 7200,
+    startedAt: null,
+    pausedAt: null,
+    isRunning: false
+};
+
+// ─── SIGNATURE PAD STATE ───
+let signaturePadCtx = null;
+let signatureDrawing = false;
+
+const STORAGE_KEY = 'pdi-app-state-v2';
+const THEME_KEY = 'pdi-theme';
 
 // ─── SAVE / AUTO-SAVE ───
-function saveToLocalStorage() {
+function setLocalStorageItem(key, value) {
     try {
-        localStorage.setItem('pdi-inspection-items', JSON.stringify(inspectionItems));
-    } catch (e) {
-        console.error('Failed to save inspection items', e);
-        showToast('⚠️ Storage full. Some photo attachments may be too large.', 'error');
+        localStorage.setItem(key, value);
+        return true;
+    } catch (error) {
+        console.error(`Failed to save ${key}`, error);
+        showToast('⚠️ Storage is full. Please export data and clear older photos.', 'error');
+        return false;
+    }
+}
+
+function saveAppState() {
+    const state = {
+        inspectionItems,
+        vehicleMetadata,
+        inspectorSignature,
+        timerState,
+        currentFilter,
+        searchQuery,
+        currentlyOpenGroup
+    };
+    return setLocalStorageItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function saveToLocalStorage() {
+    saveAppState();
+}
+
+function normalizeInspectionItems(items = []) {
+    const mappedById = new Map();
+    items.forEach((entry) => {
+        if (entry && Number.isInteger(entry.id)) {
+            mappedById.set(entry.id, entry);
+        }
+    });
+
+    return INSPECTION_DATA.map((base, index) => {
+        const incoming = mappedById.get(index) || {};
+        return {
+            ...base,
+            id: index,
+            status: incoming.status === 'PASS' || incoming.status === 'FAIL' ? incoming.status : '',
+            photo: typeof incoming.photo === 'string' && incoming.photo ? incoming.photo : null,
+            remarks: typeof incoming.remarks === 'string' ? incoming.remarks : ''
+        };
+    });
+}
+
+function restoreAppState() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+        const legacyItems = localStorage.getItem('pdi-inspection-items');
+        if (legacyItems) {
+            try {
+                const parsedLegacyItems = JSON.parse(legacyItems);
+                if (Array.isArray(parsedLegacyItems)) {
+                    inspectionItems = normalizeInspectionItems(parsedLegacyItems);
+                }
+            } catch (error) {
+                console.error('Failed to restore legacy inspection state', error);
+            }
+        }
+
+        const legacyEndTime = Number(localStorage.getItem('pdi-timer-end-time'));
+        const legacyLeftTime = Number(localStorage.getItem('pdi-timer-left'));
+        const legacyRunning = localStorage.getItem('pdi-timer-is-running') === 'true';
+        if (legacyRunning && Number.isFinite(legacyEndTime) && legacyEndTime > 0) {
+            const now = Date.now();
+            const leftSeconds = Math.max(0, Math.floor((legacyEndTime - now) / 1000));
+            timerState = {
+                durationSeconds: 7200,
+                startedAt: now - (7200 - leftSeconds) * 1000,
+                pausedAt: null,
+                isRunning: leftSeconds > 0
+            };
+        } else if (Number.isFinite(legacyLeftTime) && legacyLeftTime >= 0) {
+            timerState = {
+                durationSeconds: 7200,
+                startedAt: Date.now() - (7200 - legacyLeftTime) * 1000,
+                pausedAt: Date.now(),
+                isRunning: false
+            };
+        }
+
+        return false;
+    }
+
+    try {
+        const parsed = JSON.parse(raw);
+
+        if (Array.isArray(parsed.inspectionItems)) {
+            inspectionItems = normalizeInspectionItems(parsed.inspectionItems);
+        }
+
+        if (parsed.vehicleMetadata && typeof parsed.vehicleMetadata === 'object') {
+            vehicleMetadata = {
+                vin: String(parsed.vehicleMetadata.vin || ''),
+                odometer: String(parsed.vehicleMetadata.odometer || ''),
+                inspectorId: String(parsed.vehicleMetadata.inspectorId || '')
+            };
+        }
+
+        inspectorSignature = typeof parsed.inspectorSignature === 'string' ? parsed.inspectorSignature : '';
+
+        if (parsed.timerState && typeof parsed.timerState === 'object') {
+            const durationSeconds = Number(parsed.timerState.durationSeconds);
+            const startedAt = Number(parsed.timerState.startedAt);
+            const pausedAt = Number(parsed.timerState.pausedAt);
+            timerState = {
+                durationSeconds: Number.isFinite(durationSeconds) && durationSeconds > 0 ? durationSeconds : 7200,
+                startedAt: Number.isFinite(startedAt) ? startedAt : null,
+                pausedAt: Number.isFinite(pausedAt) ? pausedAt : null,
+                isRunning: parsed.timerState.isRunning === true
+            };
+        }
+
+        currentFilter = ['all', 'pass', 'fail', 'pending'].includes(parsed.currentFilter) ? parsed.currentFilter : 'all';
+        searchQuery = typeof parsed.searchQuery === 'string' ? parsed.searchQuery : '';
+        currentlyOpenGroup = typeof parsed.currentlyOpenGroup === 'string' ? parsed.currentlyOpenGroup : null;
+
+        return true;
+    } catch (error) {
+        console.error('Failed to restore saved app state', error);
+        return false;
     }
 }
 
@@ -475,7 +617,8 @@ function compressImage(file, callback) {
             const canvas = document.createElement('canvas');
             let width = img.width;
             let height = img.height;
-            const maxDim = 1024; // standard dimension for reporting
+            const maxDim = 1024;
+
             if (width > maxDim || height > maxDim) {
                 if (width > height) {
                     height = Math.round((height * maxDim) / width);
@@ -485,12 +628,12 @@ function compressImage(file, callback) {
                     height = maxDim;
                 }
             }
+
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(img, 0, 0, width, height);
-            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-            callback(compressedBase64);
+            callback(canvas.toDataURL('image/jpeg', 0.7));
         };
         img.src = event.target.result;
     };
@@ -501,49 +644,52 @@ function compressImage(file, callback) {
 function init() {
     initTheme();
     setupEventListeners();
-    initTimer();
+    restoreAppState();
 
-    const savedItems = localStorage.getItem('pdi-inspection-items');
-    if (savedItems) {
-        try {
-            const parsed = JSON.parse(savedItems);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                // Restore modal
-                openModal('Resume Session?', `
-                    <p>We found an in-progress inspection from your previous session.</p>
-                    <p style="margin-top:8px">Would you like to <strong>Resume</strong> it or <strong>Start Fresh</strong>?</p>
-                `, () => {
-                    inspectionItems = parsed;
-                    renderGroups();
-                    updateStats();
-                    showToast('📂 Previous session restored', 'success');
-                }, {
-                    confirmText: 'Resume',
-                    cancelText: 'Start Fresh',
-                    onCancel: () => {
-                        startFreshSession();
-                    }
-                });
-                return;
-            }
-        } catch (e) {
-            console.error('Failed to parse saved items', e);
-        }
+    if (!inspectionItems.length) {
+        inspectionItems = normalizeInspectionItems([]);
     }
 
-    startFreshSession();
+    hydrateMetadataInputs();
+    applySavedFilterAndSearch();
+    initSignaturePad();
+    restoreSignatureToCanvas();
+    initTimer();
+    renderGroups();
+    updateStats();
+    saveAppState();
+}
+
+function hydrateMetadataInputs() {
+    const vinInput = document.getElementById('vinInput');
+    const odometerInput = document.getElementById('odometerInput');
+    const inspectorIdInput = document.getElementById('inspectorIdInput');
+
+    if (vinInput) vinInput.value = vehicleMetadata.vin;
+    if (odometerInput) odometerInput.value = vehicleMetadata.odometer;
+    if (inspectorIdInput) inspectorIdInput.value = vehicleMetadata.inspectorId;
+}
+
+function applySavedFilterAndSearch() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = searchQuery;
+    }
+
+    document.querySelectorAll('.filter-tabs .tab').forEach((tab) => {
+        const map = { All: 'all', Pass: 'pass', Fail: 'fail', Pending: 'pending' };
+        const tabFilter = map[(tab.textContent || '').trim()] || 'all';
+        const active = tabFilter === currentFilter;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-pressed', String(active));
+    });
 }
 
 function startFreshSession() {
-    inspectionItems = INSPECTION_DATA.map((item, index) => ({
-        ...item,
-        id: index,
-        status: '',
-        photo: null,
-        remarks: ''
-    }));
-    resetTimer();
-    saveToLocalStorage();
+    inspectionItems = normalizeInspectionItems([]);
+    currentlyOpenGroup = null;
+    resetTimer(true);
+    saveAppState();
     renderGroups();
     updateStats();
 }
@@ -620,8 +766,8 @@ function renderGroups() {
         container.innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-layer-group"></i>
-                <h3>No assemblies found</h3>
-                <p>Try adjusting your search or filter.</p>
+                <h3>No inspection groups found</h3>
+                <p>Try adjusting your search or filter criteria.</p>
             </div>
         `;
         return;
@@ -631,9 +777,8 @@ function renderGroups() {
         const total = group.items.length;
         const pct = total > 0 ? Math.round((group.passCount / total) * 100) : 0;
         let fgClass = 'fg';
-        if (pct === 100) fgClass += '';
-        else if (group.failCount > 0) fgClass += ' fg-fail';
-        else fgClass += ' fg-partial';
+        if (group.failCount > 0) fgClass += ' fg-fail';
+        else if (pct < 100) fgClass += ' fg-partial';
 
         const circumference = 2 * Math.PI * 18;
         const offset = circumference - (pct / 100) * circumference;
@@ -705,19 +850,15 @@ function renderGroups() {
     }).join('');
 }
 
-// ─── TOGGLE GROUP (Accordion: only one open at a time) ───
+// ─── TOGGLE GROUP ───
 function toggleGroup(adc) {
-    if (currentlyOpenGroup === adc) {
-        currentlyOpenGroup = null; // close if already open
-    } else {
-        currentlyOpenGroup = adc; // open this, close any other
-    }
-    renderGroups(); // re-render to reflect the new open state
+    currentlyOpenGroup = currentlyOpenGroup === adc ? null : adc;
+    saveAppState();
+    renderGroups();
 }
 
 function handleGroupKeyDown(event, adc) {
-    const keys = ['Enter', ' '];
-    if (keys.includes(event.key)) {
+    if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
         toggleGroup(adc);
     }
@@ -732,21 +873,26 @@ function setStatus(id, status) {
         const modalHtml = `
             <div>Mark <strong>${escapeHtml(item.picp)}</strong> as <strong>FAIL</strong>.</div>
             <div style="margin-top:8px">
-                <label for="modal-photo-input" class="photo-upload-label">Upload evidence photo<span style="color:var(--danger)"> *</span></label>
-                <input type="file" id="modal-photo-input" accept="image/*" capture="environment" />
-                <div><img id="modal-photo-preview" class="photo-preview-fail" src="" alt="evidence preview" style="display:none;margin-top:8px;max-width:160px;"/></div>
+                <label for="failEvidence" class="photo-upload-label">Capture failure evidence photo<span style="color:var(--danger)"> *</span></label>
+                <input type="file" id="failEvidence" accept="image/*" capture="environment" required />
+                <img id="failEvidencePreview" src="" alt="Failure evidence preview" />
             </div>
             <div style="margin-top:8px">
-                <textarea id="modal-remarks" placeholder="Add remarks (optional)" style="width:100%;min-height:80px;border-radius:8px;border:1px solid var(--border);padding:8px;font:inherit"></textarea>
+                <textarea id="modal-remarks" placeholder="Add remarks (optional)" style="width:100%;min-height:96px;border-radius:8px;border:1px solid var(--border);padding:8px;font:inherit"></textarea>
             </div>
         `;
+
         openModal('Confirm Fail', modalHtml, () => {
-            const modalRemarks = document.getElementById('modal-remarks');
-            if (modalRemarks) {
-                item.remarks = modalRemarks.value;
+            if (!modalFailEvidenceDataUrl) {
+                showToast('📷 Failure evidence photo is required before confirming.', 'error');
+                return false;
             }
+            item.photo = modalFailEvidenceDataUrl;
+            const modalRemarks = document.getElementById('modal-remarks');
+            item.remarks = modalRemarks ? modalRemarks.value : item.remarks;
             applyStatus(item, 'FAIL');
-        }, { requirePhoto: true, itemId: item.id });
+            return true;
+        }, { requireFailEvidence: true, confirmText: 'Confirm Fail', cancelText: 'Cancel' });
         return;
     }
 
@@ -759,24 +905,22 @@ function setStatus(id, status) {
 function applyStatus(item, status) {
     item.status = status;
     if (status === 'PASS') {
-        item.photo = null; // clear photo if passed
+        item.photo = null;
     }
     saveToLocalStorage();
     renderGroups();
     updateStats();
+
     const msg = status === 'PASS' ? '✅ Marked PASS' : status === 'FAIL' ? '❌ Marked FAIL' : '↩️ Status cleared';
     const type = status === 'PASS' ? 'success' : status === 'FAIL' ? 'error' : 'info';
-    if (status === 'FAIL') {
-        showToast('⚠️ Failed! Please capture evidence photo.', 'error');
-    } else {
-        showToast(msg, type);
-    }
+    showToast(msg, type);
 }
 
 // ─── PHOTO / EVIDENCE ───
 function handlePhoto(id, input) {
-    const file = input.files[0];
+    const file = input.files && input.files[0];
     if (!file) return;
+
     compressImage(file, (compressedBase64) => {
         const item = inspectionItems.find(i => i.id === id);
         if (!item) return;
@@ -800,19 +944,32 @@ function updateStats() {
     const passed = inspectionItems.filter(i => i.status === 'PASS').length;
     const failed = inspectionItems.filter(i => i.status === 'FAIL').length;
     const pending = total - passed - failed;
+    const completed = passed + failed;
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
     document.getElementById('totalCount').textContent = total;
     document.getElementById('passedCount').textContent = passed;
     document.getElementById('failedCount').textContent = failed;
     document.getElementById('pendingCount').textContent = pending;
+
+    const progressText = document.getElementById('globalProgressText');
+    const progressFill = document.getElementById('globalProgressFill');
+    const progressTrack = document.getElementById('globalProgressTrack');
+    if (progressText) progressText.textContent = `${completed} / ${total} (${percent}%)`;
+    if (progressFill) progressFill.style.width = `${percent}%`;
+    if (progressTrack) progressTrack.setAttribute('aria-valuenow', String(percent));
 }
 
 // ─── EVENTS ───
 function setupEventListeners() {
     const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', (e) => {
-        searchQuery = e.target.value;
-        renderGroups();
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            saveAppState();
+            renderGroups();
+        });
+    }
 
     document.querySelectorAll('.filter-tabs .tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -822,16 +979,55 @@ function setupEventListeners() {
             });
             tab.classList.add('active');
             tab.setAttribute('aria-pressed', 'true');
-            const map = { 'All': 'all', 'Pass': 'pass', 'Fail': 'fail', 'Pending': 'pending' };
-            currentFilter = map[tab.textContent.trim()] || 'all';
+            const map = { All: 'all', Pass: 'pass', Fail: 'fail', Pending: 'pending' };
+            currentFilter = map[(tab.textContent || '').trim()] || 'all';
+            saveAppState();
             renderGroups();
         });
+    });
+
+    const vinInput = document.getElementById('vinInput');
+    const odometerInput = document.getElementById('odometerInput');
+    const inspectorIdInput = document.getElementById('inspectorIdInput');
+
+    if (vinInput) {
+        vinInput.addEventListener('input', () => {
+            vehicleMetadata.vin = vinInput.value;
+            saveAppState();
+        });
+    }
+
+    if (odometerInput) {
+        odometerInput.addEventListener('input', () => {
+            vehicleMetadata.odometer = odometerInput.value;
+            saveAppState();
+        });
+    }
+
+    if (inspectorIdInput) {
+        inspectorIdInput.addEventListener('input', () => {
+            vehicleMetadata.inspectorId = inspectorIdInput.value;
+            saveAppState();
+        });
+    }
+
+    const clearSignatureBtn = document.getElementById('clearSignatureBtn');
+    if (clearSignatureBtn) {
+        clearSignatureBtn.addEventListener('click', clearSignature);
+    }
+
+    window.addEventListener('beforeprint', buildPrintableReport);
+    window.addEventListener('afterprint', () => {
+        const report = document.getElementById('printReport');
+        if (report) report.hidden = true;
     });
 }
 
 // ─── TOAST ───
 function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
+    if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle' };
@@ -847,83 +1043,136 @@ function showToast(message, type = 'info') {
 }
 
 // ─── MODAL ───
-let modalCallback = null;
-
 function openModal(title, message, onConfirm, options = {}) {
     document.getElementById('modalTitle').textContent = title;
     const modalMessageEl = document.getElementById('modalMessage');
     modalMessageEl.innerHTML = message;
-    document.getElementById('modalOverlay').classList.add('open');
+
     modalCallback = onConfirm;
+    modalOptions = options;
+    modalFailEvidenceDataUrl = '';
+
+    const overlay = document.getElementById('modalOverlay');
+    overlay.classList.add('open');
+
     modalPreviouslyFocused = document.activeElement;
+
     const confirmBtn = document.getElementById('modalConfirmBtn');
     const cancelBtn = document.querySelector('#modalOverlay .modal-actions .btn-outline');
 
-    // Customize button text
     confirmBtn.textContent = options.confirmText || 'Confirm';
     cancelBtn.textContent = options.cancelText || 'Cancel';
 
-    if (options.requirePhoto) {
-        confirmBtn.disabled = true;
-        confirmBtn.setAttribute('aria-disabled', 'true');
-        const modalInput = document.getElementById('modal-photo-input');
-        const preview = document.getElementById('modal-photo-preview');
-        if (modalInput) {
-            const changeHandler = (e) => {
-                const f = e.target.files[0];
-                if (!f) return;
-                compressImage(f, (compressedBase64) => {
-                    const item = inspectionItems.find(i => i.id === options.itemId);
-                    if (!item) return;
-                    item.photo = compressedBase64;
-                    if (preview) {
-                        preview.src = compressedBase64;
-                        preview.style.display = 'block';
-                    }
-                    confirmBtn.disabled = false;
-                    confirmBtn.removeAttribute('aria-disabled');
-                });
-            };
-            modalInput.addEventListener('change', changeHandler);
-        }
+    if (options.requireFailEvidence) {
+        wireFailEvidenceInput(confirmBtn);
     } else {
         confirmBtn.disabled = false;
         confirmBtn.removeAttribute('aria-disabled');
     }
 
-    const callback = modalCallback;
     confirmBtn.onclick = () => {
-        closeModal();
-        if (callback) callback();
+        if (confirmBtn.disabled) return;
+        const result = modalCallback ? modalCallback() : true;
+        if (result !== false) {
+            closeModal();
+        }
     };
+
     cancelBtn.onclick = () => {
         closeModal();
         if (options.onCancel) options.onCancel();
     };
+
     document.addEventListener('keydown', handleModalKeydown);
-    confirmBtn.focus();
+    focusFirstModalElement();
+}
+
+function wireFailEvidenceInput(confirmBtn) {
+    const failInput = document.getElementById('failEvidence');
+    const preview = document.getElementById('failEvidencePreview');
+
+    confirmBtn.disabled = true;
+    confirmBtn.setAttribute('aria-disabled', 'true');
+
+    if (!failInput) return;
+
+    failInput.required = true;
+    failInput.addEventListener('change', (event) => {
+        const file = event.target.files && event.target.files[0];
+        modalFailEvidenceDataUrl = '';
+
+        if (!file) {
+            if (preview) {
+                preview.style.display = 'none';
+                preview.src = '';
+            }
+            confirmBtn.disabled = true;
+            confirmBtn.setAttribute('aria-disabled', 'true');
+            return;
+        }
+
+        compressImage(file, (compressedBase64) => {
+            modalFailEvidenceDataUrl = compressedBase64;
+            if (preview) {
+                preview.src = compressedBase64;
+                preview.style.display = 'block';
+            }
+            confirmBtn.disabled = false;
+            confirmBtn.removeAttribute('aria-disabled');
+        });
+    });
+}
+
+function focusFirstModalElement() {
+    const preferred = document.getElementById('failEvidence');
+    if (preferred) {
+        preferred.focus();
+        return;
+    }
+
+    const focusables = getModalFocusableElements();
+    if (focusables.length) {
+        focusables[0].focus();
+    }
+}
+
+function getModalFocusableElements() {
+    const modal = document.querySelector('#modalOverlay .modal');
+    if (!modal) return [];
+
+    return Array.from(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+        .filter((el) => !el.hasAttribute('disabled') && !el.getAttribute('aria-hidden'));
 }
 
 function closeModal() {
-    document.getElementById('modalOverlay').classList.remove('open');
+    const overlay = document.getElementById('modalOverlay');
+    overlay.classList.remove('open');
+
     modalCallback = null;
+    modalOptions = {};
+    modalFailEvidenceDataUrl = '';
+
     document.removeEventListener('keydown', handleModalKeydown);
-    if (modalPreviouslyFocused && modalPreviouslyFocused.focus) {
+
+    if (modalPreviouslyFocused && typeof modalPreviouslyFocused.focus === 'function') {
         modalPreviouslyFocused.focus();
     }
 }
 
 function handleModalKeydown(event) {
+    const overlay = document.getElementById('modalOverlay');
+    if (!overlay.classList.contains('open')) return;
+
     if (event.key === 'Escape') {
         event.preventDefault();
         closeModal();
         return;
     }
+
     if (event.key !== 'Tab') return;
 
-    const modal = document.querySelector('#modalOverlay .modal');
-    const focusable = Array.from(modal.querySelectorAll('button'));
-    if (focusable.length === 0) return;
+    const focusable = getModalFocusableElements();
+    if (!focusable.length) return;
 
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -939,59 +1188,285 @@ function handleModalKeydown(event) {
 }
 
 // ─── EXPORT / IMPORT ───
+function buildPrintableReport() {
+    const report = document.getElementById('printReport');
+    if (!report) return;
+
+    const total = inspectionItems.length;
+    const passed = inspectionItems.filter(i => i.status === 'PASS').length;
+    const failed = inspectionItems.filter(i => i.status === 'FAIL').length;
+    const pending = total - passed - failed;
+    const failedItems = inspectionItems.filter(i => i.status === 'FAIL');
+
+    const failedHtml = failedItems.length
+        ? failedItems.map((item) => `
+            <div class="report-failure">
+                <strong>${escapeHtml(item.pdc)} · ${escapeHtml(item.picp)}</strong>
+                <div>Status: FAIL</div>
+                <div>Remarks: ${escapeHtml(item.remarks || '—')}</div>
+                ${item.photo ? `<img src="${item.photo}" alt="Evidence for ${escapeHtml(item.picp)}" />` : '<div>No evidence photo</div>'}
+            </div>
+        `).join('')
+        : '<p>No failed items recorded.</p>';
+
+    report.innerHTML = `
+        <h2>PDI Road Test Report Summary</h2>
+        <p>Generated: ${new Date().toLocaleString()}</p>
+
+        <h3>Vehicle Metadata</h3>
+        <table>
+            <tr><th>Chassis / VIN #</th><td>${escapeHtml(vehicleMetadata.vin || '—')}</td></tr>
+            <tr><th>Odometer Reading</th><td>${escapeHtml(vehicleMetadata.odometer || '—')}</td></tr>
+            <tr><th>Inspector ID</th><td>${escapeHtml(vehicleMetadata.inspectorId || '—')}</td></tr>
+        </table>
+
+        <h3>Inspection Statistics</h3>
+        <table>
+            <tr><th>Total</th><td>${total}</td></tr>
+            <tr><th>Passed</th><td>${passed}</td></tr>
+            <tr><th>Failed</th><td>${failed}</td></tr>
+            <tr><th>Pending</th><td>${pending}</td></tr>
+        </table>
+
+        <h3>Failed Items with Evidence</h3>
+        ${failedHtml}
+
+        <h3>Inspector Signature</h3>
+        ${inspectorSignature ? `<img class="report-signature" src="${inspectorSignature}" alt="Inspector signature" />` : '<p>No signature captured.</p>'}
+    `;
+
+    report.hidden = false;
+}
+
 function exportPDF() {
+    buildPrintableReport();
     window.print();
     showToast('📄 PDF print dialog opened', 'info');
 }
 
 function exportCSV() {
-    const rows = [['PDC', 'ADC', 'SADC', 'PLDC', 'Checkpoint', 'Method', 'Spec', 'Status', 'Remarks']];
+    const rows = [
+        ['Chassis / VIN #', vehicleMetadata.vin],
+        ['Odometer Reading', vehicleMetadata.odometer],
+        ['Inspector ID', vehicleMetadata.inspectorId],
+        [],
+        ['PDC', 'ADC', 'SADC', 'PLDC', 'Checkpoint', 'Method', 'Spec', 'Status', 'Remarks', 'Evidence Photo Present']
+    ];
+
     inspectionItems.forEach(item => {
-        rows.push([item.pdc, item.adc, item.sadc, item.pldc, item.picp, item.method, item.spec, item.status || 'PENDING', item.remarks]);
+        rows.push([
+            item.pdc,
+            item.adc,
+            item.sadc,
+            item.pldc,
+            item.picp,
+            item.method,
+            item.spec,
+            item.status || 'PENDING',
+            item.remarks,
+            item.photo ? 'YES' : 'NO'
+        ]);
     });
-    const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+
+    const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `PDI_Report_${new Date().toISOString().slice(0,10)}.csv`;
+    link.download = `PDI_Report_${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(link.href);
     showToast('📊 CSV exported', 'success');
 }
 
 function saveJSON() {
-    const data = JSON.stringify(inspectionItems, null, 2);
-    const blob = new Blob([data], { type: 'application/json' });
+    const data = {
+        schemaVersion: 2,
+        exportedAt: new Date().toISOString(),
+        inspectionItems,
+        vehicleMetadata,
+        timerState,
+        inspectorSignature
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `PDI_Save_${new Date().toISOString().slice(0,10)}.json`;
+    link.download = `PDI_Save_${new Date().toISOString().slice(0, 10)}.json`;
     link.click();
     URL.revokeObjectURL(link.href);
     showToast('💾 Editable JSON saved', 'success');
 }
 
 function importJSON(event) {
-    const file = event.target.files[0];
+    const file = event.target.files && event.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
             const imported = JSON.parse(e.target.result);
-            if (Array.isArray(imported) && imported.length > 0 && imported[0].id !== undefined) {
-                inspectionItems = imported;
-                saveToLocalStorage();
-                renderGroups();
-                updateStats();
-                showToast('📂 Data loaded successfully', 'success');
-            } else {
-                showToast('❌ Invalid file format', 'error');
+            let importedItems = null;
+
+            if (Array.isArray(imported)) {
+                importedItems = imported;
+            } else if (imported && Array.isArray(imported.inspectionItems)) {
+                importedItems = imported.inspectionItems;
+                if (imported.vehicleMetadata && typeof imported.vehicleMetadata === 'object') {
+                    vehicleMetadata = {
+                        vin: String(imported.vehicleMetadata.vin || ''),
+                        odometer: String(imported.vehicleMetadata.odometer || ''),
+                        inspectorId: String(imported.vehicleMetadata.inspectorId || '')
+                    };
+                }
+                if (typeof imported.inspectorSignature === 'string') {
+                    inspectorSignature = imported.inspectorSignature;
+                }
+                if (imported.timerState && typeof imported.timerState === 'object') {
+                    timerState = {
+                        durationSeconds: Number(imported.timerState.durationSeconds) || 7200,
+                        startedAt: Number(imported.timerState.startedAt) || null,
+                        pausedAt: Number(imported.timerState.pausedAt) || null,
+                        isRunning: imported.timerState.isRunning === true
+                    };
+                }
             }
+
+            if (!importedItems) {
+                showToast('❌ Invalid file format', 'error');
+                return;
+            }
+
+            inspectionItems = normalizeInspectionItems(importedItems);
+            hydrateMetadataInputs();
+            restoreSignatureToCanvas();
+            initTimer();
+            saveToLocalStorage();
+            renderGroups();
+            updateStats();
+            showToast('📂 Data loaded successfully', 'success');
         } catch (err) {
             showToast('❌ Error parsing file', 'error');
         }
     };
+
     reader.readAsText(file);
     event.target.value = '';
+}
+
+// ─── SIGNATURE PAD ───
+function initSignaturePad() {
+    const canvas = document.getElementById('signaturePad');
+    if (!canvas || canvas.dataset.bound === 'true') {
+        return;
+    }
+
+    signaturePadCtx = canvas.getContext('2d');
+    resizeSignatureCanvas();
+
+    const startDrawing = (event) => {
+        event.preventDefault();
+        const point = getCanvasPoint(canvas, event);
+        signatureDrawing = true;
+        signaturePadCtx.beginPath();
+        signaturePadCtx.moveTo(point.x, point.y);
+    };
+
+    const draw = (event) => {
+        if (!signatureDrawing) return;
+        event.preventDefault();
+        const point = getCanvasPoint(canvas, event);
+        signaturePadCtx.lineTo(point.x, point.y);
+        signaturePadCtx.strokeStyle = '#111827';
+        signaturePadCtx.lineWidth = 2;
+        signaturePadCtx.lineCap = 'round';
+        signaturePadCtx.stroke();
+    };
+
+    const stopDrawing = () => {
+        if (!signatureDrawing) return;
+        signatureDrawing = false;
+        signaturePadCtx.closePath();
+        inspectorSignature = canvas.toDataURL('image/png');
+        saveAppState();
+    };
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    window.addEventListener('resize', () => {
+        const previousSignature = inspectorSignature;
+        resizeSignatureCanvas();
+        if (previousSignature) {
+            drawSignatureFromDataUrl(previousSignature);
+        }
+    });
+
+    canvas.dataset.bound = 'true';
+}
+
+function resizeSignatureCanvas() {
+    const canvas = document.getElementById('signaturePad');
+    if (!canvas || !signaturePadCtx) return;
+
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+    signaturePadCtx.setTransform(1, 0, 0, 1, 0, 0);
+    signaturePadCtx.scale(ratio, ratio);
+    signaturePadCtx.clearRect(0, 0, rect.width, rect.height);
+}
+
+function getCanvasPoint(canvas, event) {
+    const rect = canvas.getBoundingClientRect();
+    const point = event.touches && event.touches[0] ? event.touches[0] : event;
+    return {
+        x: point.clientX - rect.left,
+        y: point.clientY - rect.top
+    };
+}
+
+function drawSignatureFromDataUrl(dataUrl) {
+    const canvas = document.getElementById('signaturePad');
+    if (!canvas || !signaturePadCtx || !dataUrl) return;
+
+    const img = new Image();
+    img.onload = () => {
+        const rect = canvas.getBoundingClientRect();
+        signaturePadCtx.clearRect(0, 0, rect.width, rect.height);
+        signaturePadCtx.drawImage(img, 0, 0, rect.width, rect.height);
+    };
+    img.src = dataUrl;
+}
+
+function restoreSignatureToCanvas() {
+    if (!inspectorSignature) {
+        const canvas = document.getElementById('signaturePad');
+        if (canvas && signaturePadCtx) {
+            const rect = canvas.getBoundingClientRect();
+            signaturePadCtx.clearRect(0, 0, rect.width, rect.height);
+        }
+        return;
+    }
+
+    drawSignatureFromDataUrl(inspectorSignature);
+}
+
+function clearSignature() {
+    const canvas = document.getElementById('signaturePad');
+    if (!canvas || !signaturePadCtx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    signaturePadCtx.clearRect(0, 0, rect.width, rect.height);
+    inspectorSignature = '';
+    saveAppState();
+    showToast('✍️ Signature cleared', 'info');
 }
 
 // ─── UTILITIES ───
@@ -1000,13 +1475,13 @@ function scanQR() {
 }
 
 function getStoredTheme() {
-    return localStorage.getItem('pdi-theme') || 'light';
+    return localStorage.getItem(THEME_KEY) || 'light';
 }
 
 function applyTheme(theme) {
     const isDark = theme === 'dark';
     document.body.setAttribute('data-theme', isDark ? 'dark' : 'light');
-    localStorage.setItem('pdi-theme', theme);
+    localStorage.setItem(THEME_KEY, theme);
 
     const icon = document.querySelector('.app-header .header-actions button[title="Theme"] i');
     if (icon) {
@@ -1026,57 +1501,69 @@ function initTheme() {
 }
 
 // ─── COUNTDOWN TIMER LOGIC (2 HOURS) ───
-function initTimer() {
-    const savedEndTime = localStorage.getItem('pdi-timer-end-time');
-    const savedLeftTime = localStorage.getItem('pdi-timer-left');
-    const savedIsRunning = localStorage.getItem('pdi-timer-is-running');
+function calculateTimerSecondsLeft() {
+    const duration = Number(timerState.durationSeconds) || 7200;
+    if (!Number.isFinite(timerState.startedAt) || timerState.startedAt === null) {
+        return duration;
+    }
 
-    if (savedEndTime && savedIsRunning === 'true') {
-        const end = parseInt(savedEndTime, 10);
-        const left = Math.max(0, Math.floor((end - Date.now()) / 1000));
-        timerSecondsLeft = left;
-        if (left > 0) {
-            startTimerInterval();
-        } else {
-            timerSecondsLeft = 0;
-            updateTimerDisplay();
-            handleTimerExpiry();
-        }
-    } else if (savedLeftTime) {
-        timerSecondsLeft = parseInt(savedLeftTime, 10);
+    const referenceTime = timerState.isRunning
+        ? Date.now()
+        : (Number.isFinite(timerState.pausedAt) ? timerState.pausedAt : Date.now());
+
+    const elapsed = Math.max(0, Math.floor((referenceTime - timerState.startedAt) / 1000));
+    return Math.max(0, duration - elapsed);
+}
+
+function initTimer() {
+    timerSecondsLeft = calculateTimerSecondsLeft();
+    isTimerRunning = timerState.isRunning === true;
+
+    updateTimerDisplay();
+    updateTimerControls();
+
+    if (isTimerRunning && timerSecondsLeft > 0) {
+        startTimerInterval();
+    } else if (timerSecondsLeft <= 0) {
         isTimerRunning = false;
-        updateTimerDisplay();
-        updateTimerControls();
-    } else {
-        timerSecondsLeft = 7200; // 2 hours
-        isTimerRunning = false;
-        updateTimerDisplay();
-        updateTimerControls();
+        timerState.isRunning = false;
+        saveAppState();
     }
 }
 
 function startTimerInterval() {
     if (timerInterval) clearInterval(timerInterval);
+
+    const now = Date.now();
+    if (!Number.isFinite(timerState.startedAt) || timerState.startedAt === null) {
+        timerState.startedAt = now;
+    } else if (Number.isFinite(timerState.pausedAt) && timerState.pausedAt !== null) {
+        const elapsedBeforePause = timerState.pausedAt - timerState.startedAt;
+        timerState.startedAt = now - elapsedBeforePause;
+    }
+
+    timerState.pausedAt = null;
+    timerState.isRunning = true;
     isTimerRunning = true;
-    localStorage.setItem('pdi-timer-is-running', 'true');
-    const endTime = Date.now() + timerSecondsLeft * 1000;
-    localStorage.setItem('pdi-timer-end-time', endTime);
-    localStorage.removeItem('pdi-timer-left');
+    saveAppState();
 
     timerInterval = setInterval(() => {
-        const end = parseInt(localStorage.getItem('pdi-timer-end-time'), 10);
-        const left = Math.max(0, Math.floor((end - Date.now()) / 1000));
-        timerSecondsLeft = left;
+        timerSecondsLeft = calculateTimerSecondsLeft();
         updateTimerDisplay();
 
-        if (left <= 0) {
+        if (timerSecondsLeft <= 0) {
             clearInterval(timerInterval);
             timerInterval = null;
+            timerState.isRunning = false;
+            timerState.pausedAt = Date.now();
             isTimerRunning = false;
-            localStorage.setItem('pdi-timer-is-running', 'false');
+            saveAppState();
+            updateTimerControls();
             handleTimerExpiry();
         }
     }, 1000);
+
+    updateTimerDisplay();
     updateTimerControls();
 }
 
@@ -1085,10 +1572,14 @@ function stopTimerInterval() {
         clearInterval(timerInterval);
         timerInterval = null;
     }
+
+    timerSecondsLeft = calculateTimerSecondsLeft();
+    timerState.pausedAt = Date.now();
+    timerState.isRunning = false;
     isTimerRunning = false;
-    localStorage.setItem('pdi-timer-is-running', 'false');
-    localStorage.setItem('pdi-timer-left', timerSecondsLeft);
-    localStorage.removeItem('pdi-timer-end-time');
+    saveAppState();
+
+    updateTimerDisplay();
     updateTimerControls();
 }
 
@@ -1097,24 +1588,35 @@ function toggleTimer() {
         stopTimerInterval();
         showToast('⏸️ Timer paused', 'info');
     } else {
-        if (timerSecondsLeft <= 0) {
-            timerSecondsLeft = 7200;
+        if (timerSecondsLeft <= 0 || !Number.isFinite(timerState.startedAt)) {
+            resetTimer(true);
         }
         startTimerInterval();
         showToast('▶️ Timer started', 'info');
     }
 }
 
-function resetTimer() {
+function resetTimer(silent = false) {
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
-    timerSecondsLeft = 7200;
+
+    timerState = {
+        durationSeconds: 7200,
+        startedAt: null,
+        pausedAt: null,
+        isRunning: false
+    };
+
+    timerSecondsLeft = timerState.durationSeconds;
     isTimerRunning = false;
-    localStorage.setItem('pdi-timer-is-running', 'false');
-    localStorage.setItem('pdi-timer-left', timerSecondsLeft);
-    localStorage.removeItem('pdi-timer-end-time');
+    saveAppState();
+
     updateTimerDisplay();
     updateTimerControls();
+
+    if (!silent) {
+        showToast('⏱️ Timer reset', 'info');
+    }
 }
 
 function updateTimerDisplay() {
@@ -1122,7 +1624,7 @@ function updateTimerDisplay() {
     const mins = Math.floor((timerSecondsLeft % 3600) / 60);
     const secs = timerSecondsLeft % 60;
     const displayStr = `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-    
+
     const displayEl = document.getElementById('timerDisplay');
     if (displayEl) {
         displayEl.textContent = displayStr;
@@ -1132,7 +1634,7 @@ function updateTimerDisplay() {
     if (timerWidget) {
         if (timerSecondsLeft <= 0) {
             timerWidget.className = 'header-timer danger';
-        } else if (timerSecondsLeft < 900) { // < 15 mins
+        } else if (timerSecondsLeft < 900) {
             timerWidget.className = 'header-timer warning';
         } else {
             timerWidget.className = 'header-timer';
@@ -1145,6 +1647,7 @@ function updateTimerControls() {
     if (controlBtn) {
         controlBtn.innerHTML = isTimerRunning ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
         controlBtn.title = isTimerRunning ? 'Pause Timer' : 'Resume Timer';
+        controlBtn.setAttribute('aria-label', isTimerRunning ? 'Pause timer' : 'Resume timer');
     }
 }
 
@@ -1160,7 +1663,10 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js')
             .then(reg => console.log('Service Worker registered successfully!', reg.scope))
-            .catch(err => console.log('Service Worker registration failed:', err));
+            .catch(err => {
+                console.log('Service Worker registration failed:', err);
+                showToast('⚠️ Offline mode unavailable. App will run online only.', 'error');
+            });
     });
 }
 
