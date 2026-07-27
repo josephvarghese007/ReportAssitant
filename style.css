@@ -5,39 +5,20 @@
     margin: 0;
     padding: 0;
 }
+:root{
+    --primary:#0057B8;          /* BusTech Blue */
+    --primary-light:#2F80ED;
+    --primary-dark:#003B7A;
 
-:root {
-    --primary: #2563eb;
-    --primary-light: #4f8df5;
-    --primary-dark: #123a66;
-    --success: #16a34a;
-    --danger: #dc2626;
-    --warning: #f59e0b;
-    --gray-50: #f8fafc;
-    --gray-100: #f1f5f9;
-    --gray-200: #e2e8f0;
-    --gray-300: #cbd5e1;
-    --gray-400: #94a3b8;
-    --gray-500: #64748b;
-    --gray-600: #475569;
-    --gray-700: #334155;
-    --gray-800: #1e293b;
-    --gray-900: #0f172a;
-    --surface: #ffffff;
-    --surface-alt: #f8fafc;
-    --surface-elevated: rgba(255, 255, 255, 0.96);
-    --surface-strong: #eef4ff;
-    --text-primary: #1e293b;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
-    --border: #e2e8f0;
-    --border-strong: #cbd5e1;
-    --radius: 14px;
-    --radius-sm: 8px;
-    --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-    --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.14);
-    --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    --header-gradient: linear-gradient(145deg, var(--primary-dark), var(--primary));
+    --success:#16a34a;
+    --danger:#dc2626;
+    --warning:#f59e0b;
+
+    --surface:#ffffff;
+    --surface-alt:#f5f8fc;
+    --surface-strong:#eaf2ff;
+
+    --header-gradient:linear-gradient(135deg,#003B7A,#0057B8,#2F80ED);
 }
 
 html {
@@ -85,15 +66,11 @@ body[data-theme="dark"] {
 }
 
 /* Header */
-.app-header {
-    background: var(--header-gradient);
-    padding: 16px 20px 24px;
-    color: #fff;
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    box-shadow: 0 8px 28px rgba(26, 58, 92, 0.24);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+
+.app-header{
+    background:linear-gradient(135deg,#003B7A,#0057B8);
+    color:#fff;
+    box-shadow:0 6px 18px rgba(0,60,120,.30);
 }
 
 .app-header .top-row {
@@ -851,4 +828,30 @@ textarea:focus-visible,
     .group-progress { width: 36px !important; height: 36px !important; }
     .group-progress .progress-text { font-size: 9px !important; }
     .toast-container { left: 8px; right: 8px; top: 76px; }
+}
+
+.company-logo{
+    height:68px;
+    width:auto;
+    background:#fff;
+    border-radius:10px;
+    padding:4px 8px;
+    box-shadow:0 3px 12px rgba(0,0,0,.18);
+}
+
+.btn-primary{
+    background:#0057B8;
+}
+
+.btn-primary:hover{
+    background:#003B7A;
+}
+
+.filter-tabs .tab.active{
+    background:#0057B8;
+}
+
+.search-wrap input:focus{
+    border-color:#0057B8;
+    box-shadow:0 0 0 3px rgba(0,87,184,.15);
 }
