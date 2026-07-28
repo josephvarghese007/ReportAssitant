@@ -831,10 +831,13 @@ textarea:focus-visible,
 }
 
 .company-logo{
-    height:68px;
+    height:56px;
     width:auto;
-    background:#fff;
-    border-radius:10px;
+    max-width:120px;
+    object-fit:contain;
+    display:block;
+    background: #0056b800;
+    border-radius:12px;
     padding:4px 8px;
     box-shadow:0 3px 12px rgba(0,0,0,.18);
 }
