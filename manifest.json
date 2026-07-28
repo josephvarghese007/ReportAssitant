@@ -1,17 +1,23 @@
 {
-  "short_name": "PDI Test",
-  "name": "Bus PDI Road Test Inspector",
+  "name": "BusTech Engineering · PDI Road Test",
+  "short_name": "PDI Road Test",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f8fc",
+  "theme_color": "#0057B8",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1048/1048313.png",
+      "src": "bustech-logo.png",
+      "sizes": "192x192",
       "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "bustech-logo.png",
       "sizes": "512x512",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
     }
-  ],
-  "start_url": "./index.html",
-  "background_color": "#0f172a",
-  "theme_color": "#2563eb",
-  "display": "standalone",
-  "orientation": "portrait"
+  ]
 }
