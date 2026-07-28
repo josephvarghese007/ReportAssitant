@@ -836,10 +836,10 @@ textarea:focus-visible,
     max-width:120px;
     object-fit:contain;
     display:block;
-    background: #0056b800;
+    /* background: #0056b800; */
     border-radius:12px;
     padding:4px 8px;
-    box-shadow:0 3px 12px rgba(0,0,0,.18);
+    /* box-shadow:0 3px 12px rgba(0,0,0,.18); */
 }
 
 .btn-primary{
